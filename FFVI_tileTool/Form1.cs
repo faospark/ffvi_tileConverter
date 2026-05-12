@@ -589,12 +589,10 @@ namespace FFVI_tileTool
                 ShowAppMessage($"Chunk 1 is always 512x512. You are trying to import {bmp.Width}x{bmp.Height}.", "Import warning", MessageBoxIcon.Warning);
                 return;
             }
-            byte[] palBuffer = BuildPalette(bmp);
-            BitmapData bmpData = bmp.LockBits(new Rectangle(0, 0, 512, 512), ImageLockMode.ReadOnly, PixelFormat.Format8bppIndexed);
+            BuildGameImportData(bmp, out byte[] palBuffer, out byte[] pixelBuffer);
             byte[] b = new byte[512 * 512 + 1024];
             Buffer.BlockCopy(palBuffer, 0, b, 0, 1024);
-            Marshal.Copy(bmpData.Scan0, b, 1024, 512 * 512);
-            bmp.UnlockBits(bmpData);
+            Buffer.BlockCopy(pixelBuffer, 0, b, 1024, 512 * 512);
 
             string filePath = st.Where(x => Path.GetFileName(x) == (string)listBox1.SelectedValue).First();
             byte[] bb = File.ReadAllBytes(filePath);
@@ -623,12 +621,10 @@ namespace FFVI_tileTool
                 ShowAppMessage($"Chunk 2 is always 512 pixels wide. You are trying to import {bmp.Width}x{bmp.Height}.", "Import warning", MessageBoxIcon.Warning);
                 return;
             }
-            byte[] palBuffer = BuildPalette(bmp);
-            BitmapData bmpData = bmp.LockBits(new Rectangle(0, 0, 512, bmp.Height), ImageLockMode.ReadOnly, PixelFormat.Format8bppIndexed);
+            BuildGameImportData(bmp, out byte[] palBuffer, out byte[] pixelBuffer);
             byte[] b = new byte[512 * bmp.Height + 1024];
             Buffer.BlockCopy(palBuffer, 0, b, 0, 1024);
-            Marshal.Copy(bmpData.Scan0, b, 1024, 512 * bmp.Height);
-            bmp.UnlockBits(bmpData);
+            Buffer.BlockCopy(pixelBuffer, 0, b, 1024, 512 * bmp.Height);
 
             string filePath = st.Where(x => Path.GetFileName(x) == (string)listBox1.SelectedValue).First();
             byte[] bb = File.ReadAllBytes(filePath);
@@ -648,29 +644,67 @@ namespace FFVI_tileTool
             throw new Exception("NO");
         }
 
-        private static byte[] BuildPalette(Bitmap bmp)
+        private static void BuildGameImportData(Bitmap bmp, out byte[] paletteBuffer, out byte[] pixelBuffer)
         {
-            byte[] palBuffer = new byte[1024];
-            if (bmp.Palette.Entries.Length == 256)
-                for (int i = 0; i < 256; i++)
-                {
-                    palBuffer[i * 4 + 0] = bmp.Palette.Entries[i].B;
-                    palBuffer[i * 4 + 1] = bmp.Palette.Entries[i].G;
-                    palBuffer[i * 4 + 2] = bmp.Palette.Entries[i].R;
-                    palBuffer[i * 4 + 3] = (byte)(255 - bmp.Palette.Entries[i].A);
-                }
-            else
+            const byte keyR = 0x05;
+            const byte keyG = 0x05;
+            const byte keyB = 0x05;
+
+            paletteBuffer = new byte[1024];
+            System.Drawing.Color[] entries = bmp.Palette.Entries;
+
+            int keyIndex = -1;
+            for (int i = 0; i < entries.Length; i++)
             {
-                for (int i = 0; i < 255; i++)
+                if (entries[i].R == keyR && entries[i].G == keyG && entries[i].B == keyB)
                 {
-                    palBuffer[i * 4 + 0] = bmp.Palette.Entries[i].B;
-                    palBuffer[i * 4 + 1] = bmp.Palette.Entries[i].G;
-                    palBuffer[i * 4 + 2] = bmp.Palette.Entries[i].R;
-                    palBuffer[i * 4 + 3] = (byte)(255 - bmp.Palette.Entries[i].A);
+                    keyIndex = i;
+                    break;
                 }
-                palBuffer[1023] = 255;
             }
-            return palBuffer;
+            if (keyIndex < 0) keyIndex = 255;
+
+            for (int i = 0; i < 256; i++)
+            {
+                System.Drawing.Color color = i < entries.Length ? entries[i] : System.Drawing.Color.FromArgb(255, 0, 0, 0);
+                if (i == keyIndex)
+                    color = System.Drawing.Color.FromArgb(255, keyR, keyG, keyB);
+
+                paletteBuffer[i * 4 + 0] = color.B;
+                paletteBuffer[i * 4 + 1] = color.G;
+                paletteBuffer[i * 4 + 2] = color.R;
+                paletteBuffer[i * 4 + 3] = (byte)(255 - color.A);
+            }
+
+            BitmapData bmpData = bmp.LockBits(new Rectangle(0, 0, bmp.Width, bmp.Height), ImageLockMode.ReadOnly, PixelFormat.Format8bppIndexed);
+            try
+            {
+                int stride = Math.Abs(bmpData.Stride);
+                byte[] rowBuffer = new byte[stride * bmp.Height];
+                Marshal.Copy(bmpData.Scan0, rowBuffer, 0, rowBuffer.Length);
+
+                pixelBuffer = new byte[bmp.Width * bmp.Height];
+                for (int y = 0; y < bmp.Height; y++)
+                {
+                    int sourceOffset = y * stride;
+                    int targetOffset = y * bmp.Width;
+                    Buffer.BlockCopy(rowBuffer, sourceOffset, pixelBuffer, targetOffset, bmp.Width);
+                }
+            }
+            finally
+            {
+                bmp.UnlockBits(bmpData);
+            }
+
+            for (int i = 0; i < pixelBuffer.Length; i++)
+            {
+                int paletteIndex = pixelBuffer[i];
+                System.Drawing.Color sourceColor = paletteIndex < entries.Length ? entries[paletteIndex] : System.Drawing.Color.FromArgb(255, 0, 0, 0);
+                bool isKeyColor = sourceColor.R == keyR && sourceColor.G == keyG && sourceColor.B == keyB;
+                bool isTransparent = sourceColor.A < 128;
+                if (isKeyColor || isTransparent)
+                    pixelBuffer[i] = (byte)keyIndex;
+            }
         }
 
         private void browseAndMassExportToolStripMenuItem_Click(object sender, EventArgs e)

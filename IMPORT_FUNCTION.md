@@ -53,6 +53,12 @@ Palette entries are stored in this order per color:
 - `R`
 - inverted alpha (`255 - A`)
 
+In addition, import now enforces the game transparency key color:
+
+- key color is `05 05 05` (hex `050505`)
+- importer ensures this color exists in the output palette
+- any source pixel that is transparent (palette alpha `< 128`) or already `050505` is remapped to the key-color palette index
+
 So importing updates both:
 
 - indexed pixel data
