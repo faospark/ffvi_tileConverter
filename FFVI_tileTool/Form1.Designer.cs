@@ -36,6 +36,7 @@
             this.filterOffToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.filterSnowTilesToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.filterGrassTilesToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.filterMagitekTilesToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.isolateFilteredFilesToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.darkModeToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.aboutToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -44,6 +45,7 @@
             this.fileListContextMenuStrip = new System.Windows.Forms.ContextMenuStrip();
             this.revealInFileExplorerToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.gzipThisFileToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.isolateSelectedFilesToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.splitContainer2 = new System.Windows.Forms.SplitContainer();
             this.groupBox4 = new System.Windows.Forms.GroupBox();
             this.pictureBox2 = new System.Windows.Forms.PictureBox();
@@ -120,6 +122,7 @@
             this.filterOffToolStripMenuItem,
             this.filterSnowTilesToolStripMenuItem,
             this.filterGrassTilesToolStripMenuItem,
+            this.filterMagitekTilesToolStripMenuItem,
             this.isolateFilteredFilesToolStripMenuItem});
             this.filtersToolStripMenuItem.Name = "filtersToolStripMenuItem";
             this.filtersToolStripMenuItem.Size = new System.Drawing.Size(50, 20);
@@ -145,6 +148,13 @@
             this.filterGrassTilesToolStripMenuItem.Size = new System.Drawing.Size(169, 22);
             this.filterGrassTilesToolStripMenuItem.Text = "Grass Tiles";
             this.filterGrassTilesToolStripMenuItem.Click += new System.EventHandler(this.filterGrassTilesToolStripMenuItem_Click);
+            // 
+            // filterMagitekTilesToolStripMenuItem
+            // 
+            this.filterMagitekTilesToolStripMenuItem.Name = "filterMagitekTilesToolStripMenuItem";
+            this.filterMagitekTilesToolStripMenuItem.Size = new System.Drawing.Size(169, 22);
+            this.filterMagitekTilesToolStripMenuItem.Text = "Magitek Tiles";
+            this.filterMagitekTilesToolStripMenuItem.Click += new System.EventHandler(this.filterMagitekTilesToolStripMenuItem_Click);
             // 
             // isolateFilteredFilesToolStripMenuItem
             // 
@@ -192,6 +202,7 @@
             this.listBox1.FormattingEnabled = true;
             this.listBox1.Location = new System.Drawing.Point(0, 0);
             this.listBox1.Name = "listBox1";
+            this.listBox1.SelectionMode = System.Windows.Forms.SelectionMode.MultiExtended;
             this.listBox1.Size = new System.Drawing.Size(110, 646);
             this.listBox1.TabIndex = 0;
             this.listBox1.ContextMenuStrip = this.fileListContextMenuStrip;
@@ -202,9 +213,10 @@
             // 
             this.fileListContextMenuStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.revealInFileExplorerToolStripMenuItem,
-            this.gzipThisFileToolStripMenuItem});
+            this.gzipThisFileToolStripMenuItem,
+            this.isolateSelectedFilesToolStripMenuItem});
             this.fileListContextMenuStrip.Name = "fileListContextMenuStrip";
-            this.fileListContextMenuStrip.Size = new System.Drawing.Size(190, 48);
+            this.fileListContextMenuStrip.Size = new System.Drawing.Size(190, 70);
             // 
             // revealInFileExplorerToolStripMenuItem
             // 
@@ -219,6 +231,13 @@
             this.gzipThisFileToolStripMenuItem.Size = new System.Drawing.Size(189, 22);
             this.gzipThisFileToolStripMenuItem.Text = "Gzip this file";
             this.gzipThisFileToolStripMenuItem.Click += new System.EventHandler(this.gzipThisFileToolStripMenuItem_Click);
+            // 
+            // isolateSelectedFilesToolStripMenuItem
+            // 
+            this.isolateSelectedFilesToolStripMenuItem.Name = "isolateSelectedFilesToolStripMenuItem";
+            this.isolateSelectedFilesToolStripMenuItem.Size = new System.Drawing.Size(189, 22);
+            this.isolateSelectedFilesToolStripMenuItem.Text = "Isolate selected file(s)";
+            this.isolateSelectedFilesToolStripMenuItem.Click += new System.EventHandler(this.isolateSelectedFilesToolStripMenuItem_Click);
             // 
             // splitContainer2
             // 
@@ -412,6 +431,7 @@
         private System.Windows.Forms.ToolStripMenuItem filterOffToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem filterSnowTilesToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem filterGrassTilesToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem filterMagitekTilesToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem isolateFilteredFilesToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem darkModeToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem aboutToolStripMenuItem;
@@ -420,6 +440,7 @@
         private System.Windows.Forms.ContextMenuStrip fileListContextMenuStrip;
         private System.Windows.Forms.ToolStripMenuItem revealInFileExplorerToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem gzipThisFileToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem isolateSelectedFilesToolStripMenuItem;
         private System.Windows.Forms.SplitContainer splitContainer2;
         private System.Windows.Forms.FlowLayoutPanel flowLayoutPanel1;
         private System.Windows.Forms.Button button1;

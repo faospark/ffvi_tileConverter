@@ -21,7 +21,15 @@ namespace FFVI_tileTool
         {
             Off,
             SnowTiles,
-            GrassTiles
+            GrassTiles,
+            MagitekTiles
+        }
+
+        private enum IsolateDestinationChoice
+        {
+            Cancel,
+            NewFolder,
+            ExistingFolder
         }
 
         private const int DwmwaUseImmersiveDarkMode = 20;
@@ -42,6 +50,11 @@ namespace FFVI_tileTool
             "map395.bin", "map014.bin", "map047.bin", "map075.bin", "map093.bin", "map115.bin", "map148.bin",
             "map157.bin", "map159.bin", "map169.bin", "map170.bin", "map182.bin", "map185.bin", "map188.bin",
             "map198.bin", "map302.bin", "map340.bin", "map341.bin", "map342.bin", "map343.bin", "map389.bin", "map392.bin"
+        };
+
+        private static readonly HashSet<string> MagitekTileMaps = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "map091.bin", "map117.bin", "map119.bin", "map187.bin", "map220.bin", "map228.bin", "map332.bin"
         };
 
         [DllImport("dwmapi.dll", PreserveSig = true)]
@@ -77,26 +90,28 @@ namespace FFVI_tileTool
             if (!string.IsNullOrWhiteSpace(lastOpenedFile) && File.Exists(lastOpenedFile))
                 initialDirectory = Path.GetDirectoryName(lastOpenedFile);
 
-            string selectedFolder;
+            string selectedFile;
             using (OpenFileDialog openFileDialog = new OpenFileDialog()
             {
-                Title = "Select folder containing map*.bin files",
-                Filter = "Folder selection|*.folder",
-                CheckFileExists = false,
+                Title = "Select map*.bin file",
+                Filter = "Map files (map*.bin)|map*.bin|BIN files (*.bin)|*.bin|All files (*.*)|*.*",
+                CheckFileExists = true,
                 CheckPathExists = true,
-                ValidateNames = false,
-                FileName = "Select this folder",
+                ValidateNames = true,
                 Multiselect = false,
                 InitialDirectory = initialDirectory
             })
             {
                 if (openFileDialog.ShowDialog() != DialogResult.OK) return;
 
-                selectedFolder = Path.GetDirectoryName(openFileDialog.FileName);
-                if (string.IsNullOrWhiteSpace(selectedFolder) || !Directory.Exists(selectedFolder)) return;
+                selectedFile = openFileDialog.FileName;
+                if (string.IsNullOrWhiteSpace(selectedFile) || !File.Exists(selectedFile)) return;
             }
 
-            LoadMapFilesFromFolder(selectedFolder);
+            string selectedFolder = Path.GetDirectoryName(selectedFile);
+            if (string.IsNullOrWhiteSpace(selectedFolder) || !Directory.Exists(selectedFolder)) return;
+
+            LoadMapFilesFromFolder(selectedFolder, selectedFile);
 
             if (!EnsureMapBinFilesOrOfferDecompression(selectedFolder))
             {
@@ -104,7 +119,7 @@ namespace FFVI_tileTool
                 return;
             }
 
-            SaveLastOpenedFile(st[0]);
+            SaveLastOpenedFile(selectedFile);
         }
 
         private void listBox1_SelectedIndexChanged(object sender, EventArgs e)
@@ -123,12 +138,30 @@ namespace FFVI_tileTool
 
         private string GetSelectedMapFilePath()
         {
-            if (st == null || st.Length == 0 || listBox1.SelectedValue == null) return null;
+            if (st == null || st.Length == 0 || listBox1.SelectedItem == null) return null;
 
-            string selectedName = listBox1.SelectedValue as string;
+            string selectedName = listBox1.SelectedItem as string;
             if (string.IsNullOrWhiteSpace(selectedName)) return null;
 
             return st.FirstOrDefault(x => string.Equals(Path.GetFileName(x), selectedName, StringComparison.OrdinalIgnoreCase));
+        }
+
+        private List<string> GetSelectedMapFilePaths()
+        {
+            List<string> selectedPaths = new List<string>();
+            if (st == null || st.Length == 0) return selectedPaths;
+
+            foreach (object selectedItem in listBox1.SelectedItems)
+            {
+                string selectedName = selectedItem as string;
+                if (string.IsNullOrWhiteSpace(selectedName)) continue;
+
+                string filePath = st.FirstOrDefault(x => string.Equals(Path.GetFileName(x), selectedName, StringComparison.OrdinalIgnoreCase));
+                if (!string.IsNullOrWhiteSpace(filePath) && !selectedPaths.Contains(filePath, StringComparer.OrdinalIgnoreCase))
+                    selectedPaths.Add(filePath);
+            }
+
+            return selectedPaths;
         }
 
         private void listBox1_MouseDown(object sender, MouseEventArgs e)
@@ -136,8 +169,14 @@ namespace FFVI_tileTool
             if (e.Button != MouseButtons.Right) return;
 
             int index = listBox1.IndexFromPoint(e.Location);
-            if (index != ListBox.NoMatches)
+            if (index == ListBox.NoMatches) return;
+
+            bool isAlreadySelected = listBox1.SelectedIndices.Contains(index);
+            if (!isAlreadySelected)
+            {
+                listBox1.ClearSelected();
                 listBox1.SelectedIndex = index;
+            }
         }
 
         private void revealInFileExplorerToolStripMenuItem_Click(object sender, EventArgs e)
@@ -181,6 +220,219 @@ namespace FFVI_tileTool
             }
         }
 
+        private void isolateSelectedFilesToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            List<string> selectedFiles = GetSelectedMapFilePaths();
+            if (selectedFiles.Count == 0)
+            {
+                ShowAppMessage("Select one or more files first. You can hold Ctrl to select multiple files.", "Isolate selected files", MessageBoxIcon.Warning);
+                return;
+            }
+
+            string sourceFolder = Path.GetDirectoryName(selectedFiles[0]);
+            if (string.IsNullOrWhiteSpace(sourceFolder) || !Directory.Exists(sourceFolder))
+            {
+                ShowAppMessage("Unable to locate current source folder.", "Isolate selected files", MessageBoxIcon.Warning);
+                return;
+            }
+
+            string isolationRoot = Path.Combine(sourceFolder, "isolation");
+            Directory.CreateDirectory(isolationRoot);
+
+            IsolateDestinationChoice choice = ShowIsolateDestinationChoiceDialog();
+            if (choice == IsolateDestinationChoice.Cancel)
+                return;
+
+            string destinationFolder;
+            if (choice == IsolateDestinationChoice.NewFolder)
+            {
+                destinationFolder = Path.Combine(isolationRoot, $"isolate_{DateTime.Now:yyyyMMdd_HHmmss}");
+                Directory.CreateDirectory(destinationFolder);
+            }
+            else
+            {
+                destinationFolder = ShowIsolateExistingFolderDialog(isolationRoot);
+                if (string.IsNullOrWhiteSpace(destinationFolder))
+                    return;
+
+                string normalizedRoot = Path.GetFullPath(isolationRoot).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+                string normalizedDestination = Path.GetFullPath(destinationFolder).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+                if (!normalizedDestination.StartsWith(normalizedRoot, StringComparison.OrdinalIgnoreCase))
+                {
+                    ShowAppMessage("Please select a folder inside the isolation directory.", "Isolate selected files", MessageBoxIcon.Warning);
+                    return;
+                }
+
+                Directory.CreateDirectory(destinationFolder);
+            }
+
+            int copiedCount = 0;
+            int failedCount = 0;
+            foreach (string filePath in selectedFiles)
+            {
+                try
+                {
+                    string destinationPath = Path.Combine(destinationFolder, Path.GetFileName(filePath));
+                    File.Copy(filePath, destinationPath, true);
+                    copiedCount++;
+                }
+                catch
+                {
+                    failedCount++;
+                }
+            }
+
+            DialogResult openDecision = ShowAppMessageWithActions(
+                $"Selected files isolated.\n\nCopied: {copiedCount}\nFailed: {failedCount}\nFolder: {destinationFolder}\n\nOpen this folder now?",
+                "Isolate selected files",
+                "Open Folder",
+                "Done",
+                failedCount == 0 ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
+
+            if (openDecision == DialogResult.OK)
+                Process.Start(new ProcessStartInfo("explorer.exe", $"\"{destinationFolder}\"") { UseShellExecute = true });
+        }
+
+        private IsolateDestinationChoice ShowIsolateDestinationChoiceDialog()
+        {
+            bool darkMode = darkModeToolStripMenuItem.Checked;
+            using (Form dialog = new Form())
+            using (Label messageLabel = new Label())
+            using (Panel buttonPanel = new Panel())
+            using (Button newFolderButton = new Button())
+            using (Button existingFolderButton = new Button())
+            using (Button cancelButton = new Button())
+            {
+                dialog.Text = "Isolate selected files";
+                dialog.FormBorderStyle = FormBorderStyle.FixedDialog;
+                dialog.StartPosition = FormStartPosition.CenterParent;
+                dialog.MinimizeBox = false;
+                dialog.MaximizeBox = false;
+                dialog.ShowInTaskbar = false;
+                dialog.ClientSize = new Size(620, 210);
+
+                messageLabel.AutoSize = false;
+                messageLabel.Dock = DockStyle.Fill;
+                messageLabel.Padding = new Padding(14, 12, 14, 8);
+                messageLabel.TextAlign = ContentAlignment.TopLeft;
+                messageLabel.Text = "Choose where to isolate the selected files:\n\n- New isolation folder\n- Existing folder inside isolation";
+
+                buttonPanel.Dock = DockStyle.Bottom;
+                buttonPanel.Height = 54;
+                buttonPanel.Padding = new Padding(0, 12, 12, 12);
+
+                cancelButton.Text = "Cancel";
+                cancelButton.Size = new Size(92, 28);
+                cancelButton.Dock = DockStyle.Right;
+                cancelButton.DialogResult = DialogResult.Cancel;
+
+                existingFolderButton.Text = "Existing Folder";
+                existingFolderButton.Size = new Size(122, 28);
+                existingFolderButton.Dock = DockStyle.Right;
+                existingFolderButton.DialogResult = DialogResult.No;
+
+                newFolderButton.Text = "New Folder";
+                newFolderButton.Size = new Size(104, 28);
+                newFolderButton.Dock = DockStyle.Right;
+                newFolderButton.DialogResult = DialogResult.Yes;
+
+                dialog.AcceptButton = newFolderButton;
+                dialog.CancelButton = cancelButton;
+
+                dialog.Controls.Add(messageLabel);
+                dialog.Controls.Add(buttonPanel);
+                buttonPanel.Controls.Add(cancelButton);
+                buttonPanel.Controls.Add(existingFolderButton);
+                buttonPanel.Controls.Add(newFolderButton);
+
+                GetThemeColors(darkMode, out System.Drawing.Color background, out System.Drawing.Color surface, out System.Drawing.Color foreground);
+                ApplyThemeToControlTree(dialog, background, surface, foreground, darkMode);
+
+                DialogResult result = dialog.ShowDialog(this);
+                if (result == DialogResult.Yes) return IsolateDestinationChoice.NewFolder;
+                if (result == DialogResult.No) return IsolateDestinationChoice.ExistingFolder;
+                return IsolateDestinationChoice.Cancel;
+            }
+        }
+
+        private string ShowIsolateExistingFolderDialog(string isolationRoot)
+        {
+            string[] existingFolders = Directory.GetDirectories(isolationRoot)
+                .OrderBy(Path.GetFileName)
+                .ToArray();
+
+            if (existingFolders.Length == 0)
+            {
+                ShowAppMessage("No existing folders found under isolation. Choose New Folder instead.", "Isolate selected files", MessageBoxIcon.Information);
+                return null;
+            }
+
+            bool darkMode = darkModeToolStripMenuItem.Checked;
+            using (Form dialog = new Form())
+            using (Label messageLabel = new Label())
+            using (ListBox folderList = new ListBox())
+            using (Panel buttonPanel = new Panel())
+            using (Button selectButton = new Button())
+            using (Button cancelButton = new Button())
+            {
+                dialog.Text = "Choose Existing Isolation Folder";
+                dialog.FormBorderStyle = FormBorderStyle.FixedDialog;
+                dialog.StartPosition = FormStartPosition.CenterParent;
+                dialog.MinimizeBox = false;
+                dialog.MaximizeBox = false;
+                dialog.ShowInTaskbar = false;
+                dialog.ClientSize = new Size(680, 340);
+
+                messageLabel.AutoSize = false;
+                messageLabel.Dock = DockStyle.Top;
+                messageLabel.Height = 52;
+                messageLabel.Padding = new Padding(14, 12, 14, 8);
+                messageLabel.TextAlign = ContentAlignment.TopLeft;
+                messageLabel.Text = "Select an existing folder under isolation:";
+
+                folderList.Dock = DockStyle.Fill;
+                folderList.IntegralHeight = false;
+                folderList.DisplayMember = "Name";
+
+                foreach (string folder in existingFolders)
+                    folderList.Items.Add(folder);
+
+                if (folderList.Items.Count > 0)
+                    folderList.SelectedIndex = 0;
+
+                buttonPanel.Dock = DockStyle.Bottom;
+                buttonPanel.Height = 54;
+                buttonPanel.Padding = new Padding(0, 12, 12, 12);
+
+                cancelButton.Text = "Cancel";
+                cancelButton.Size = new Size(92, 28);
+                cancelButton.Dock = DockStyle.Right;
+                cancelButton.DialogResult = DialogResult.Cancel;
+
+                selectButton.Text = "Select";
+                selectButton.Size = new Size(96, 28);
+                selectButton.Dock = DockStyle.Right;
+                selectButton.DialogResult = DialogResult.OK;
+
+                dialog.AcceptButton = selectButton;
+                dialog.CancelButton = cancelButton;
+
+                dialog.Controls.Add(folderList);
+                dialog.Controls.Add(messageLabel);
+                dialog.Controls.Add(buttonPanel);
+                buttonPanel.Controls.Add(cancelButton);
+                buttonPanel.Controls.Add(selectButton);
+
+                GetThemeColors(darkMode, out System.Drawing.Color background, out System.Drawing.Color surface, out System.Drawing.Color foreground);
+                ApplyThemeToControlTree(dialog, background, surface, foreground, darkMode);
+
+                if (dialog.ShowDialog(this) != DialogResult.OK)
+                    return null;
+
+                return folderList.SelectedItem as string;
+            }
+        }
+
         private void LoadMapFilesFromFolder(string folderPath, string fileToSelect = null)
         {
             if (string.IsNullOrWhiteSpace(folderPath) || !Directory.Exists(folderPath))
@@ -211,6 +463,8 @@ namespace FFVI_tileTool
                 query = query.Where(x => SnowTileMaps.Contains(Path.GetFileName(x)));
             else if (activeMapFilter == MapCategoryFilter.GrassTiles)
                 query = query.Where(x => GrassTileMaps.Contains(Path.GetFileName(x)));
+            else if (activeMapFilter == MapCategoryFilter.MagitekTiles)
+                query = query.Where(x => MagitekTileMaps.Contains(Path.GetFileName(x)));
 
             st = query.OrderBy(Path.GetFileName).ToArray();
             string[] fileNames = st.Select(Path.GetFileName).ToArray();
@@ -241,6 +495,7 @@ namespace FFVI_tileTool
             filterOffToolStripMenuItem.Checked = activeMapFilter == MapCategoryFilter.Off;
             filterSnowTilesToolStripMenuItem.Checked = activeMapFilter == MapCategoryFilter.SnowTiles;
             filterGrassTilesToolStripMenuItem.Checked = activeMapFilter == MapCategoryFilter.GrassTiles;
+            filterMagitekTilesToolStripMenuItem.Checked = activeMapFilter == MapCategoryFilter.MagitekTiles;
         }
 
         private void SetActiveMapFilter(MapCategoryFilter filter)
@@ -253,6 +508,7 @@ namespace FFVI_tileTool
         {
             if (activeMapFilter == MapCategoryFilter.SnowTiles) return "SnowTiles";
             if (activeMapFilter == MapCategoryFilter.GrassTiles) return "GrassTiles";
+            if (activeMapFilter == MapCategoryFilter.MagitekTiles) return "MagitekTiles";
             return "AllMaps";
         }
 
@@ -1227,24 +1483,26 @@ namespace FFVI_tileTool
             if (!string.IsNullOrWhiteSpace(lastOpenedFile) && File.Exists(lastOpenedFile))
                 initialDirectory = Path.GetDirectoryName(lastOpenedFile);
 
-            string sourceFolder;
-            using (OpenFileDialog folderDialog = new OpenFileDialog()
+            string selectedFile;
+            using (OpenFileDialog fileDialog = new OpenFileDialog()
             {
-                Title = "Select folder containing map*.bin files",
-                Filter = "Folder selection|*.folder",
-                CheckFileExists = false,
+                Title = "Select a file from the folder for mass export",
+                Filter = "Map files (map*.bin;map*.bin.gz)|map*.bin;map*.bin.gz|All files (*.*)|*.*",
+                CheckFileExists = true,
                 CheckPathExists = true,
-                ValidateNames = false,
-                FileName = "Select this folder",
+                ValidateNames = true,
                 InitialDirectory = initialDirectory,
                 Multiselect = false
             })
             {
-                if (folderDialog.ShowDialog() != DialogResult.OK) return;
+                if (fileDialog.ShowDialog() != DialogResult.OK) return;
 
-                sourceFolder = Path.GetDirectoryName(folderDialog.FileName);
-                if (string.IsNullOrWhiteSpace(sourceFolder) || !Directory.Exists(sourceFolder)) return;
+                selectedFile = fileDialog.FileName;
+                if (string.IsNullOrWhiteSpace(selectedFile) || !File.Exists(selectedFile)) return;
             }
+
+            string sourceFolder = Path.GetDirectoryName(selectedFile);
+            if (string.IsNullOrWhiteSpace(sourceFolder) || !Directory.Exists(sourceFolder)) return;
 
             string[] mapFiles = Directory.GetFiles(sourceFolder, "map*.bin", SearchOption.TopDirectoryOnly)
                 .OrderBy(Path.GetFileName)
@@ -1437,6 +1695,11 @@ namespace FFVI_tileTool
         private void filterGrassTilesToolStripMenuItem_Click(object sender, EventArgs e)
         {
             SetActiveMapFilter(MapCategoryFilter.GrassTiles);
+        }
+
+        private void filterMagitekTilesToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            SetActiveMapFilter(MapCategoryFilter.MagitekTiles);
         }
 
         private void isolateFilteredFilesToolStripMenuItem_Click(object sender, EventArgs e)
