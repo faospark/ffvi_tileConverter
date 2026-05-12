@@ -21,12 +21,6 @@ namespace FFVI_tileTool
             public byte A;
         }
 
-        struct MapTile
-        {
-            public Color[] palette;
-            public byte[] imgBuff;
-        }
-
         [STAThread]
         static void Main(string[] args)
         {
@@ -102,35 +96,6 @@ namespace FFVI_tileTool
                     //bmpSecond ; varied size
                     //second bmp is 512* (imagebuffer/512). It's always INT
                     throw new Exception("NOT IMPLEMENTED, Go away");
-                    MapTile mapTile = new MapTile() { palette = new Color[256], imgBuff = firstImageBuffer };
-                    for (int i = 0; i < mapTile.palette.Length; i++)
-                        mapTile.palette[i] = new Color() { R = paletteBuffer[i * 4], G = paletteBuffer[i * 4 + 1], B = paletteBuffer[i * 4 + 2], A = paletteBuffer[i * 4 + 3] };
-                    ColorPalette cp = bmpOne.Palette;
-                    for (int i = 0; i < 256; i++)
-                        cp.Entries[i] = System.Drawing.Color.FromArgb(
-                            255-mapTile.palette[i].A,
-                            mapTile.palette[i].B,
-                            mapTile.palette[i].G,
-                            mapTile.palette[i].R);
-                    bmpOne.Palette = cp;
-                    BitmapData bmpData = bmpOne.LockBits(new Rectangle(0, 0, bmpOne.Width, bmpOne.Height), ImageLockMode.WriteOnly, PixelFormat.Format8bppIndexed);
-                    byte[] bmpDataBuffer = new byte[bmpData.Width * bmpData.Height];
-
-                    Marshal.Copy(mapTile.imgBuff, 0, bmpData.Scan0, mapTile.imgBuff.Length);
-                    //Marshal.Copy(bmpData.Scan0, bmpDataBuffer, 0, bmpDataBuffer.Length);
-                    //for (int i = 0; i < mapTile.imgBuff.Length; i++)
-                    //{
-                    //   /* bmpDataBuffer[i * 4] = mapTile.palette[mapTile.imgBuff[i]].R;
-                    //    bmpDataBuffer[i * 4 + 1] = mapTile.palette[mapTile.imgBuff[i]].G;
-                    //    bmpDataBuffer[i * 4 + 2] = mapTile.palette[mapTile.imgBuff[i]].B;
-                    //    bmpDataBuffer[i * 4 + 3] = (byte)((bmpDataBuffer[i * 4] == 0 && bmpDataBuffer[i * 4 + 1] == 0 && bmpDataBuffer[i * 4 + 2] == 0) ?
-                    //        0 :
-                    //        (byte)(255 - mapTile.palette[mapTile.imgBuff[i]].A));*/
-                       
-                    //}
-                    //Marshal.Copy(bmpDataBuffer, 0, bmpData.Scan0, bmpDataBuffer.Length);
-                    bmpOne.UnlockBits(bmpData);
-                    bmpOne.Save($"{Path.GetDirectoryName(file)}\\convertedTiles\\{Path.GetFileName(file)}.png", ImageFormat.Png);
                 }
             }
             #endregion

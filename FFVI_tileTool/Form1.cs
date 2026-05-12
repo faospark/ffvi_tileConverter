@@ -15,6 +15,8 @@ namespace FFVI_tileTool
 {
     public partial class Form1 : Form
     {
+        private const string LastOpenedFileStateName = "last-opened-map.txt";
+        private const string DefaultWindowTitle = "FFVI tile tool";
 
         struct Color
         {
@@ -34,16 +36,29 @@ namespace FFVI_tileTool
         public Form1()
         {
             InitializeComponent();
+            Text = DefaultWindowTitle;
+            RestoreLastOpenedFile();
         }
 
         private void browseToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            using (FolderBrowserDialog folderBrowserDialog = new FolderBrowserDialog() { Description = "Show me path to your map*.bin files" })
+            string lastOpenedFile = LoadLastOpenedFile();
+            string initialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+            if (!string.IsNullOrWhiteSpace(lastOpenedFile) && File.Exists(lastOpenedFile))
+                initialDirectory = Path.GetDirectoryName(lastOpenedFile);
+
+            using (OpenFileDialog openFileDialog = new OpenFileDialog()
             {
-                if (folderBrowserDialog.ShowDialog() != DialogResult.OK) return;
-                st = Directory.GetFiles(folderBrowserDialog.SelectedPath, "map*.bin", SearchOption.TopDirectoryOnly);
-                if (st.Length == 0) return;
-                listBox1.DataSource = (from a in st select Path.GetFileName(a)).ToArray();
+                Title = "Select one map*.bin file",
+                Filter = "Map files (map*.bin)|map*.bin|All BIN files (*.bin)|*.bin|All files (*.*)|*.*",
+                Multiselect = false,
+                CheckFileExists = true,
+                InitialDirectory = initialDirectory
+            })
+            {
+                if (openFileDialog.ShowDialog() != DialogResult.OK) return;
+                LoadMapFilesFromFolder(Path.GetDirectoryName(openFileDialog.FileName), openFileDialog.FileName);
+                SaveLastOpenedFile(openFileDialog.FileName);
             }
         }
 
@@ -57,6 +72,101 @@ namespace FFVI_tileTool
             
             string filePath = st.Where(x => Path.GetFileName(x) == (string)listBox.SelectedValue).First();
             RenderImage(filePath);
+            SaveLastOpenedFile(filePath);
+            UpdateWindowTitle(filePath);
+        }
+
+        private void LoadMapFilesFromFolder(string folderPath, string fileToSelect = null)
+        {
+            if (string.IsNullOrWhiteSpace(folderPath) || !Directory.Exists(folderPath))
+            {
+                st = new string[0];
+                listBox1.DataSource = null;
+                return;
+            }
+
+            st = Directory.GetFiles(folderPath, "map*.bin", SearchOption.TopDirectoryOnly);
+            if (st.Length == 0)
+            {
+                listBox1.DataSource = null;
+                return;
+            }
+
+            string[] fileNames = st.Select(Path.GetFileName).ToArray();
+            listBox1.DataSource = fileNames;
+
+            if (!string.IsNullOrWhiteSpace(fileToSelect))
+            {
+                string selectedName = Path.GetFileName(fileToSelect);
+                if (fileNames.Any(x => string.Equals(x, selectedName, StringComparison.OrdinalIgnoreCase)))
+                    listBox1.SelectedItem = selectedName;
+            }
+
+            if (listBox1.Items.Count > 0 && listBox1.SelectedIndex < 0)
+                listBox1.SelectedIndex = 0;
+        }
+
+        private string GetStateFilePath()
+        {
+            return Path.Combine(Application.UserAppDataPath, LastOpenedFileStateName);
+        }
+
+        private void SaveLastOpenedFile(string filePath)
+        {
+            if (string.IsNullOrWhiteSpace(filePath)) return;
+
+            try
+            {
+                Directory.CreateDirectory(Application.UserAppDataPath);
+                File.WriteAllText(GetStateFilePath(), filePath);
+            }
+            catch
+            {
+                // Non-fatal: app should still work if state can't be persisted.
+            }
+        }
+
+        private string LoadLastOpenedFile()
+        {
+            try
+            {
+                string stateFilePath = GetStateFilePath();
+                if (!File.Exists(stateFilePath)) return null;
+
+                string filePath = File.ReadAllText(stateFilePath).Trim();
+                if (string.IsNullOrWhiteSpace(filePath)) return null;
+
+                return filePath;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private void RestoreLastOpenedFile()
+        {
+            string lastOpenedFile = LoadLastOpenedFile();
+            if (string.IsNullOrWhiteSpace(lastOpenedFile) || !File.Exists(lastOpenedFile)) return;
+
+            LoadMapFilesFromFolder(Path.GetDirectoryName(lastOpenedFile), lastOpenedFile);
+            UpdateWindowTitle(lastOpenedFile);
+        }
+
+        private void UpdateWindowTitle(string filePath)
+        {
+            if (string.IsNullOrWhiteSpace(filePath))
+            {
+                Text = DefaultWindowTitle;
+                return;
+            }
+
+            string relativePath = filePath;
+            string currentDirectory = Directory.GetCurrentDirectory();
+            if (!string.IsNullOrWhiteSpace(currentDirectory) && filePath.StartsWith(currentDirectory, StringComparison.OrdinalIgnoreCase))
+                relativePath = filePath.Substring(currentDirectory.Length).TrimStart(Path.DirectorySeparatorChar);
+
+            Text = $"{DefaultWindowTitle} - {relativePath}";
         }
 
         private void RenderImage(string file)
@@ -219,9 +329,6 @@ namespace FFVI_tileTool
         private byte[] PaletteToByte(System.Drawing.Color[] pal)
         {
             throw new Exception("NO");
-            byte[] b = new byte[1024];
-            
-            return b;
         }
 
         private static byte[] BuildPalette(Bitmap bmp)
