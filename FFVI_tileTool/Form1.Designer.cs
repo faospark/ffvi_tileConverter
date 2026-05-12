@@ -38,6 +38,7 @@
             this.filterGrassTilesToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.isolateFilteredFilesToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.darkModeToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.aboutToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.splitContainer1 = new System.Windows.Forms.SplitContainer();
             this.listBox1 = new System.Windows.Forms.ListBox();
             this.fileListContextMenuStrip = new System.Windows.Forms.ContextMenuStrip();
@@ -84,7 +85,8 @@
             this.createBackupToolStripMenuItem,
             this.browseAndMassExportToolStripMenuItem,
             this.filtersToolStripMenuItem,
-            this.darkModeToolStripMenuItem});
+            this.darkModeToolStripMenuItem,
+            this.aboutToolStripMenuItem});
             this.menuStrip1.Location = new System.Drawing.Point(0, 0);
             this.menuStrip1.Name = "menuStrip1";
             this.menuStrip1.Size = new System.Drawing.Size(723, 24);
@@ -159,6 +161,13 @@
             this.darkModeToolStripMenuItem.Size = new System.Drawing.Size(80, 20);
             this.darkModeToolStripMenuItem.Text = "Dark mode";
             this.darkModeToolStripMenuItem.Click += new System.EventHandler(this.darkModeToolStripMenuItem_Click);
+            // 
+            // aboutToolStripMenuItem
+            // 
+            this.aboutToolStripMenuItem.Name = "aboutToolStripMenuItem";
+            this.aboutToolStripMenuItem.Size = new System.Drawing.Size(48, 20);
+            this.aboutToolStripMenuItem.Text = "About";
+            this.aboutToolStripMenuItem.Click += new System.EventHandler(this.aboutToolStripMenuItem_Click);
             // 
             // splitContainer1
             // 
@@ -405,6 +414,7 @@
         private System.Windows.Forms.ToolStripMenuItem filterGrassTilesToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem isolateFilteredFilesToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem darkModeToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem aboutToolStripMenuItem;
         private System.Windows.Forms.SplitContainer splitContainer1;
         private System.Windows.Forms.ListBox listBox1;
         private System.Windows.Forms.ContextMenuStrip fileListContextMenuStrip;

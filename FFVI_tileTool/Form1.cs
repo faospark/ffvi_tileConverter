@@ -911,6 +911,12 @@ namespace FFVI_tileTool
             SaveDarkModeState(darkModeToolStripMenuItem.Checked);
         }
 
+        private void aboutToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            AboutForm aboutForm = new AboutForm(darkModeToolStripMenuItem.Checked);
+            aboutForm.ShowDialog(this);
+        }
+
         private sealed class ThemeColorTable : ProfessionalColorTable
         {
             private readonly bool darkMode;
