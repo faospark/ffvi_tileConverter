@@ -30,6 +30,7 @@
         {
             this.menuStrip1 = new System.Windows.Forms.MenuStrip();
             this.browseToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.createBackupToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.browseAndMassExportToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.darkModeToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.splitContainer1 = new System.Windows.Forms.SplitContainer();
@@ -72,6 +73,7 @@
             // 
             this.menuStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.browseToolStripMenuItem,
+            this.createBackupToolStripMenuItem,
             this.browseAndMassExportToolStripMenuItem,
             this.darkModeToolStripMenuItem});
             this.menuStrip1.Location = new System.Drawing.Point(0, 0);
@@ -86,6 +88,13 @@
             this.browseToolStripMenuItem.Size = new System.Drawing.Size(66, 20);
             this.browseToolStripMenuItem.Text = "Browse...";
             this.browseToolStripMenuItem.Click += new System.EventHandler(this.browseToolStripMenuItem_Click);
+            // 
+            // createBackupToolStripMenuItem
+            // 
+            this.createBackupToolStripMenuItem.Name = "createBackupToolStripMenuItem";
+            this.createBackupToolStripMenuItem.Size = new System.Drawing.Size(93, 20);
+            this.createBackupToolStripMenuItem.Text = "Create Backup";
+            this.createBackupToolStripMenuItem.Click += new System.EventHandler(this.createBackupToolStripMenuItem_Click);
             // 
             // browseAndMassExportToolStripMenuItem
             // 
@@ -317,6 +326,7 @@
 
         private System.Windows.Forms.MenuStrip menuStrip1;
         private System.Windows.Forms.ToolStripMenuItem browseToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem createBackupToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem darkModeToolStripMenuItem;
         private System.Windows.Forms.SplitContainer splitContainer1;
         private System.Windows.Forms.ListBox listBox1;

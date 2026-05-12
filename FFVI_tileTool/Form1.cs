@@ -6,6 +6,7 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
+using System.IO.Compression;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
@@ -17,9 +18,11 @@ namespace FFVI_tileTool
     {
         private const string LastOpenedFileStateName = "last-opened-map.txt";
         private const string DarkModeStateName = "dark-mode.txt";
+        private const string BackupReminderStateName = "backup-reminder-shown.txt";
         private const string DefaultWindowTitle = "FFVI tile tool";
 
         string[] st;
+        private bool backupReminderHandledSession;
         public Form1()
         {
             InitializeComponent();
@@ -39,19 +42,34 @@ namespace FFVI_tileTool
             if (!string.IsNullOrWhiteSpace(lastOpenedFile) && File.Exists(lastOpenedFile))
                 initialDirectory = Path.GetDirectoryName(lastOpenedFile);
 
+            string selectedFolder;
             using (OpenFileDialog openFileDialog = new OpenFileDialog()
             {
-                Title = "Select one map*.bin file",
-                Filter = "Map files (map*.bin)|map*.bin|All BIN files (*.bin)|*.bin|All files (*.*)|*.*",
+                Title = "Select folder containing map*.bin files",
+                Filter = "Folder selection|*.folder",
+                CheckFileExists = false,
+                CheckPathExists = true,
+                ValidateNames = false,
+                FileName = "Select this folder",
                 Multiselect = false,
-                CheckFileExists = true,
                 InitialDirectory = initialDirectory
             })
             {
                 if (openFileDialog.ShowDialog() != DialogResult.OK) return;
-                LoadMapFilesFromFolder(Path.GetDirectoryName(openFileDialog.FileName), openFileDialog.FileName);
-                SaveLastOpenedFile(openFileDialog.FileName);
+
+                selectedFolder = Path.GetDirectoryName(openFileDialog.FileName);
+                if (string.IsNullOrWhiteSpace(selectedFolder) || !Directory.Exists(selectedFolder)) return;
             }
+
+            LoadMapFilesFromFolder(selectedFolder);
+
+            if (!EnsureMapBinFilesOrOfferDecompression(selectedFolder))
+            {
+                ShowAppMessage("No map*.bin files found in the selected folder.", "Browse", MessageBoxIcon.Warning);
+                return;
+            }
+
+            SaveLastOpenedFile(st[0]);
         }
 
         private void listBox1_SelectedIndexChanged(object sender, EventArgs e)
@@ -96,8 +114,147 @@ namespace FFVI_tileTool
 
             if (listBox1.Items.Count > 0 && listBox1.SelectedIndex < 0)
                 listBox1.SelectedIndex = 0;
+
+            MaybeShowFirstRunBackupWarning(folderPath);
         }
 
+        private static string[] GetMapGzipFiles(string folderPath)
+        {
+            if (string.IsNullOrWhiteSpace(folderPath) || !Directory.Exists(folderPath))
+                return new string[0];
+
+            return Directory.GetFiles(folderPath, "map*.bin.gz", SearchOption.TopDirectoryOnly)
+                .OrderBy(Path.GetFileName)
+                .ToArray();
+        }
+
+        private bool EnsureMapBinFilesOrOfferDecompression(string folderPath)
+        {
+            if (st != null && st.Length > 0) return true;
+
+            string[] gzipFiles = GetMapGzipFiles(folderPath);
+            if (gzipFiles.Length == 0) return false;
+
+            DialogResult decision = ShowAppMessageWithActions(
+                "No map*.bin files were found, but map*.bin.gz files were detected.\n\nDo you want to decompress them now?",
+                "Compressed map files detected",
+                "Decompress",
+                "Cancel",
+                MessageBoxIcon.Warning);
+
+            if (decision != DialogResult.OK) return false;
+
+            bool cancelled = DecompressMapGzipFilesWithProgress(gzipFiles, "Decompressing map files", out int decompressedCount, out int skippedCount, out int failedCount);
+            LoadMapFilesFromFolder(folderPath);
+
+            ShowAppMessage(
+                $"Decompression {(cancelled ? "cancelled" : "finished")}.\n\nDecompressed: {decompressedCount}\nSkipped existing: {skippedCount}\nFailed: {failedCount}",
+                "Decompression result",
+                failedCount == 0 ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
+
+            return st != null && st.Length > 0;
+        }
+
+        private bool DecompressMapGzipFilesWithProgress(string[] gzipFiles, string title, out int decompressedCount, out int skippedCount, out int failedCount)
+        {
+            decompressedCount = 0;
+            skippedCount = 0;
+            failedCount = 0;
+            bool cancelRequested = false;
+
+            using (Form progressForm = new Form())
+            using (Label statusLabel = new Label())
+            using (ProgressBar progressBar = new ProgressBar())
+            using (Button cancelButton = new Button())
+            {
+                progressForm.Text = title;
+                progressForm.FormBorderStyle = FormBorderStyle.FixedDialog;
+                progressForm.StartPosition = FormStartPosition.CenterParent;
+                progressForm.MinimizeBox = false;
+                progressForm.MaximizeBox = false;
+                progressForm.ControlBox = false;
+                progressForm.ClientSize = new Size(520, 120);
+
+                statusLabel.AutoSize = false;
+                statusLabel.TextAlign = ContentAlignment.MiddleLeft;
+                statusLabel.Dock = DockStyle.Top;
+                statusLabel.Height = 56;
+                statusLabel.Text = "Preparing decompression...";
+
+                progressBar.Dock = DockStyle.Bottom;
+                progressBar.Height = 24;
+                progressBar.Minimum = 0;
+                progressBar.Maximum = gzipFiles.Length;
+                progressBar.Value = 0;
+
+                cancelButton.Text = "Cancel";
+                cancelButton.Size = new Size(90, 26);
+                cancelButton.Location = new Point(progressForm.ClientSize.Width - cancelButton.Width - 12, 62);
+                cancelButton.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+                cancelButton.Click += (s, evt) =>
+                {
+                    cancelRequested = true;
+                    cancelButton.Enabled = false;
+                    statusLabel.Text = "Cancelling after current file...";
+                };
+
+                progressForm.Controls.Add(statusLabel);
+                progressForm.Controls.Add(cancelButton);
+                progressForm.Controls.Add(progressBar);
+
+                GetThemeColors(darkModeToolStripMenuItem.Checked, out System.Drawing.Color background, out System.Drawing.Color surface, out System.Drawing.Color foreground);
+                ApplyThemeToControlTree(progressForm, background, surface, foreground, darkModeToolStripMenuItem.Checked);
+
+                progressForm.Show(this);
+                progressForm.Refresh();
+
+                for (int i = 0; i < gzipFiles.Length; i++)
+                {
+                    if (cancelRequested) break;
+
+                    string gzipFile = gzipFiles[i];
+                    statusLabel.Text = $"Decompressing {i + 1}/{gzipFiles.Length}: {Path.GetFileName(gzipFile)}";
+                    progressBar.Value = i + 1;
+                    progressForm.Refresh();
+                    Application.DoEvents();
+
+                    if (cancelRequested) break;
+
+                    try
+                    {
+                        if (!gzipFile.EndsWith(".gz", StringComparison.OrdinalIgnoreCase))
+                        {
+                            failedCount++;
+                            continue;
+                        }
+
+                        string outputFile = gzipFile.Substring(0, gzipFile.Length - 3);
+                        if (File.Exists(outputFile))
+                        {
+                            skippedCount++;
+                            continue;
+                        }
+
+                        using (FileStream inputStream = new FileStream(gzipFile, FileMode.Open, FileAccess.Read))
+                        using (GZipStream gzipStream = new GZipStream(inputStream, CompressionMode.Decompress))
+                        using (FileStream outputStream = new FileStream(outputFile, FileMode.CreateNew, FileAccess.Write))
+                        {
+                            gzipStream.CopyTo(outputStream);
+                        }
+
+                        decompressedCount++;
+                    }
+                    catch
+                    {
+                        failedCount++;
+                    }
+                }
+
+                progressForm.Close();
+            }
+
+            return cancelRequested;
+        }
         private string GetStateFilePath()
         {
             return Path.Combine(Application.UserAppDataPath, LastOpenedFileStateName);
@@ -106,6 +263,118 @@ namespace FFVI_tileTool
         private string GetDarkModeStateFilePath()
         {
             return Path.Combine(Application.UserAppDataPath, DarkModeStateName);
+        }
+
+        private string GetBackupReminderStateFilePath()
+        {
+            return Path.Combine(Application.UserAppDataPath, BackupReminderStateName);
+        }
+
+        private bool HasShownBackupReminder()
+        {
+            return File.Exists(GetBackupReminderStateFilePath());
+        }
+
+        private void MarkBackupReminderShown()
+        {
+            try
+            {
+                Directory.CreateDirectory(Application.UserAppDataPath);
+                File.WriteAllText(GetBackupReminderStateFilePath(), "1");
+            }
+            catch
+            {
+                // Non-fatal: app should still work if state can't be persisted.
+            }
+        }
+
+        private string GetCurrentMapFolder()
+        {
+            if (st != null && st.Length > 0)
+                return Path.GetDirectoryName(st[0]);
+
+            string lastOpenedFile = LoadLastOpenedFile();
+            if (!string.IsNullOrWhiteSpace(lastOpenedFile) && File.Exists(lastOpenedFile))
+                return Path.GetDirectoryName(lastOpenedFile);
+
+            return null;
+        }
+
+        private void MaybeShowFirstRunBackupWarning(string folderPath)
+        {
+            if (backupReminderHandledSession) return;
+            if (HasShownBackupReminder())
+            {
+                backupReminderHandledSession = true;
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(folderPath) || !Directory.Exists(folderPath)) return;
+
+            string[] mapFiles = Directory.GetFiles(folderPath, "map*.bin", SearchOption.TopDirectoryOnly);
+            if (mapFiles.Length == 0) return;
+
+            backupReminderHandledSession = true;
+
+            DialogResult decision = ShowAppMessageWithActions(
+                "First-time warning: It is strongly recommended to create a backup before editing tiles.\n\nDo you want to create a backup now?",
+                "Backup recommended",
+                "Create Backup",
+                "Later",
+                MessageBoxIcon.Warning);
+
+            if (decision == DialogResult.OK)
+            {
+                TryCreateMapBackup(folderPath, out int backedUpCount, out int skippedCount, out int failedCount, out string outputFolder);
+                ShowAppMessage(
+                    $"Backup finished.\n\nBacked up: {backedUpCount}\nSkipped existing: {skippedCount}\nFailed: {failedCount}\nOutput folder: {outputFolder}",
+                    "Map backup",
+                    failedCount == 0 ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
+            }
+
+            MarkBackupReminderShown();
+        }
+
+        private static bool TryCreateMapBackup(string folderPath, out int backedUpCount, out int skippedCount, out int failedCount, out string outputFolder)
+        {
+            backedUpCount = 0;
+            skippedCount = 0;
+            failedCount = 0;
+
+            outputFolder = string.Empty;
+            if (string.IsNullOrWhiteSpace(folderPath) || !Directory.Exists(folderPath)) return false;
+
+            string[] mapFiles = Directory.GetFiles(folderPath, "map*.bin", SearchOption.TopDirectoryOnly);
+            if (mapFiles.Length == 0) return false;
+
+            string backupRoot = Path.Combine(folderPath, "map_backup");
+            Directory.CreateDirectory(backupRoot);
+
+            string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+            outputFolder = Path.Combine(backupRoot, timestamp);
+            Directory.CreateDirectory(outputFolder);
+
+            foreach (string sourceFile in mapFiles)
+            {
+                try
+                {
+                    string destinationFile = Path.Combine(outputFolder, Path.GetFileName(sourceFile));
+                    if (File.Exists(destinationFile))
+                    {
+                        skippedCount++;
+                        continue;
+                    }
+
+                    File.Copy(sourceFile, destinationFile, false);
+                    backedUpCount++;
+                }
+                catch
+                {
+                    failedCount++;
+                }
+            }
+
+            return true;
         }
 
         private void SaveLastOpenedFile(string filePath)
@@ -230,6 +499,63 @@ namespace FFVI_tileTool
 
                 dialog.Controls.Add(messageLabel);
                 dialog.Controls.Add(okButton);
+
+                GetThemeColors(darkMode, out System.Drawing.Color background, out System.Drawing.Color surface, out System.Drawing.Color foreground);
+                ApplyThemeToControlTree(dialog, background, surface, foreground, darkMode);
+
+                return dialog.ShowDialog(this);
+            }
+        }
+
+        private DialogResult ShowAppMessageWithActions(string message, string title, string primaryActionText, string secondaryActionText, MessageBoxIcon icon = MessageBoxIcon.None)
+        {
+            bool darkMode = darkModeToolStripMenuItem.Checked;
+            using (Form dialog = new Form())
+            using (Label messageLabel = new Label())
+            using (Panel buttonPanel = new Panel())
+            using (Button primaryButton = new Button())
+            using (Button secondaryButton = new Button())
+            {
+                dialog.Text = title;
+                dialog.FormBorderStyle = FormBorderStyle.FixedDialog;
+                dialog.StartPosition = FormStartPosition.CenterParent;
+                dialog.MinimizeBox = false;
+                dialog.MaximizeBox = false;
+                dialog.ShowInTaskbar = false;
+                dialog.ClientSize = new Size(600, 230);
+
+                string iconText = string.Empty;
+                if (icon == MessageBoxIcon.Warning) iconText = "Warning\n\n";
+                else if (icon == MessageBoxIcon.Information) iconText = "Information\n\n";
+                else if (icon == MessageBoxIcon.Error) iconText = "Error\n\n";
+
+                messageLabel.AutoSize = false;
+                messageLabel.Dock = DockStyle.Fill;
+                messageLabel.Padding = new Padding(14, 12, 14, 8);
+                messageLabel.TextAlign = ContentAlignment.TopLeft;
+                messageLabel.Text = iconText + message;
+
+                buttonPanel.Dock = DockStyle.Bottom;
+                buttonPanel.Height = 54;
+                buttonPanel.Padding = new Padding(0, 12, 12, 12);
+
+                secondaryButton.Text = secondaryActionText;
+                secondaryButton.Size = new Size(100, 28);
+                secondaryButton.Dock = DockStyle.Right;
+                secondaryButton.DialogResult = DialogResult.Cancel;
+
+                primaryButton.Text = primaryActionText;
+                primaryButton.Size = new Size(110, 28);
+                primaryButton.Dock = DockStyle.Right;
+                primaryButton.DialogResult = DialogResult.OK;
+
+                dialog.AcceptButton = primaryButton;
+                dialog.CancelButton = secondaryButton;
+
+                dialog.Controls.Add(messageLabel);
+                dialog.Controls.Add(buttonPanel);
+                buttonPanel.Controls.Add(secondaryButton);
+                buttonPanel.Controls.Add(primaryButton);
 
                 GetThemeColors(darkMode, out System.Drawing.Color background, out System.Drawing.Color surface, out System.Drawing.Color foreground);
                 ApplyThemeToControlTree(dialog, background, surface, foreground, darkMode);
@@ -757,8 +1083,38 @@ namespace FFVI_tileTool
 
             if (mapFiles.Length == 0)
             {
-                ShowAppMessage("No map*.bin files found in the selected folder.", "Mass export", MessageBoxIcon.Warning);
-                return;
+                string[] gzipFiles = GetMapGzipFiles(sourceFolder);
+                if (gzipFiles.Length == 0)
+                {
+                    ShowAppMessage("No map*.bin files found in the selected folder.", "Mass export", MessageBoxIcon.Warning);
+                    return;
+                }
+
+                DialogResult decision = ShowAppMessageWithActions(
+                    "No map*.bin files were found, but map*.bin.gz files were detected.\n\nDo you want to decompress them now and continue mass export?",
+                    "Compressed map files detected",
+                    "Decompress",
+                    "Cancel",
+                    MessageBoxIcon.Warning);
+
+                if (decision != DialogResult.OK) return;
+
+                bool cancelled = DecompressMapGzipFilesWithProgress(gzipFiles, "Decompressing map files", out int decompressedCount, out int skippedCount, out int failedCount);
+
+                ShowAppMessage(
+                    $"Decompression {(cancelled ? "cancelled" : "finished")}.\n\nDecompressed: {decompressedCount}\nSkipped existing: {skippedCount}\nFailed: {failedCount}",
+                    "Decompression result",
+                    failedCount == 0 ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
+
+                mapFiles = Directory.GetFiles(sourceFolder, "map*.bin", SearchOption.TopDirectoryOnly)
+                    .OrderBy(Path.GetFileName)
+                    .ToArray();
+
+                if (mapFiles.Length == 0)
+                {
+                    ShowAppMessage("No map*.bin files are available after decompression.", "Mass export", MessageBoxIcon.Warning);
+                    return;
+                }
             }
 
             if (!ShowMassExportCautionDialog()) return;
@@ -876,6 +1232,27 @@ namespace FFVI_tileTool
                             failedCount == 0 ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
                     }
             }
+        }
+
+        private void createBackupToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            string folderPath = GetCurrentMapFolder();
+            if (string.IsNullOrWhiteSpace(folderPath) || !Directory.Exists(folderPath))
+            {
+                ShowAppMessage("No working map folder is loaded yet. Please use Browse first.", "Map backup", MessageBoxIcon.Warning);
+                return;
+            }
+
+            if (!TryCreateMapBackup(folderPath, out int backedUpCount, out int skippedCount, out int failedCount, out string outputFolder))
+            {
+                ShowAppMessage("No map*.bin files found in the current folder.", "Map backup", MessageBoxIcon.Warning);
+                return;
+            }
+
+            ShowAppMessage(
+                $"Backup finished.\n\nBacked up: {backedUpCount}\nSkipped existing: {skippedCount}\nFailed: {failedCount}\nOutput folder: {outputFolder}",
+                "Map backup",
+                failedCount == 0 ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
         }
     }
 }
