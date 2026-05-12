@@ -420,7 +420,7 @@ namespace FFVI_tileTool
         {
             //is 1st chunk
             string path = "";
-            using (OpenFileDialog ofd = new OpenFileDialog() { Filter = "*.PNG|*.PNG", Multiselect = false })
+            using (OpenFileDialog ofd = new OpenFileDialog() { Filter = "Image files (*.png;*.bmp)|*.png;*.bmp|PNG files (*.png)|*.png|BMP files (*.bmp)|*.bmp", Multiselect = false })
                 if (ofd.ShowDialog() == DialogResult.OK)
                     path = ofd.FileName;
                 else return;
@@ -428,12 +428,12 @@ namespace FFVI_tileTool
             Bitmap bmp = new Bitmap(path);
             if(bmp.PixelFormat != PixelFormat.Format8bppIndexed)
             {
-                MessageBox.Show("PNG is not 8BPP");
+                MessageBox.Show("Image is not 8BPP indexed.");
                 return;
             }
             if(bmp.Height != 512 || bmp.Width != 512)
             {
-                MessageBox.Show($"Chunk 1 is always 512x512! You are trying to import {bmp.Width}x{bmp.Height} PNG.");
+                MessageBox.Show($"Chunk 1 is always 512x512. You are trying to import {bmp.Width}x{bmp.Height}.");
                 return;
             }
             byte[] palBuffer = BuildPalette(bmp);
@@ -454,7 +454,7 @@ namespace FFVI_tileTool
         {
             //2nd chunk
             string path = "";
-            using (OpenFileDialog ofd = new OpenFileDialog() { Filter = "*.PNG|*.PNG", Multiselect = false })
+            using (OpenFileDialog ofd = new OpenFileDialog() { Filter = "Image files (*.png;*.bmp)|*.png;*.bmp|PNG files (*.png)|*.png|BMP files (*.bmp)|*.bmp", Multiselect = false })
                 if (ofd.ShowDialog() == DialogResult.OK)
                     path = ofd.FileName;
                 else return;
@@ -462,12 +462,12 @@ namespace FFVI_tileTool
             Bitmap bmp = new Bitmap(path);
             if (bmp.PixelFormat != PixelFormat.Format8bppIndexed)
             {
-                MessageBox.Show("PNG is not 8BPP");
+                MessageBox.Show("Image is not 8BPP indexed.");
                 return;
             }
             if (bmp.Width != 512)
             {
-                MessageBox.Show($"Chunk 2 is always 512x width! You are trying to import {bmp.Width}x{bmp.Height} PNG.");
+                MessageBox.Show($"Chunk 2 is always 512 pixels wide. You are trying to import {bmp.Width}x{bmp.Height}.");
                 return;
             }
             byte[] palBuffer = BuildPalette(bmp);
