@@ -358,6 +358,7 @@ namespace FFVI_tileTool
             Marshal.Copy(mapTile.imgBuff, 0, bmpData.Scan0, mapTile.imgBuff.Length);
             bmpOne.UnlockBits(bmpData);
 
+            pictureBox1.Size = bmpOne.Size;
             pictureBox1.Image = bmpOne;
 
             //two
@@ -379,7 +380,16 @@ namespace FFVI_tileTool
                 bmpDataBuffer = new byte[bmpData.Width * bmpData.Height];
                 Marshal.Copy(mapTile.imgBuff, 0, bmpData.Scan0, mapTile.imgBuff.Length);
                 bmpTwo.UnlockBits(bmpData);
+
+                pictureBox2.Size = bmpTwo.Size;
+                panel2.AutoScrollMinSize = bmpTwo.Size;
                 pictureBox2.Image = bmpTwo;
+            }
+            else
+            {
+                pictureBox2.Size = new Size(512, 512);
+                panel2.AutoScrollMinSize = pictureBox2.Size;
+                pictureBox2.Image = null;
             }
 
             pictureBox1.Image = bmpOne;
