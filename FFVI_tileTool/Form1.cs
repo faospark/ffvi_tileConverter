@@ -16,6 +16,7 @@ namespace FFVI_tileTool
     public partial class Form1 : Form
     {
         private const string LastOpenedFileStateName = "last-opened-map.txt";
+        private const string DarkModeStateName = "dark-mode.txt";
         private const string DefaultWindowTitle = "FFVI tile tool";
 
         struct Color
@@ -37,6 +38,11 @@ namespace FFVI_tileTool
         {
             InitializeComponent();
             Text = DefaultWindowTitle;
+
+            bool darkModeEnabled = LoadDarkModeState();
+            darkModeToolStripMenuItem.Checked = darkModeEnabled;
+            ApplyTheme(darkModeEnabled);
+
             RestoreLastOpenedFile();
         }
 
@@ -111,6 +117,11 @@ namespace FFVI_tileTool
             return Path.Combine(Application.UserAppDataPath, LastOpenedFileStateName);
         }
 
+        private string GetDarkModeStateFilePath()
+        {
+            return Path.Combine(Application.UserAppDataPath, DarkModeStateName);
+        }
+
         private void SaveLastOpenedFile(string filePath)
         {
             if (string.IsNullOrWhiteSpace(filePath)) return;
@@ -151,6 +162,145 @@ namespace FFVI_tileTool
 
             LoadMapFilesFromFolder(Path.GetDirectoryName(lastOpenedFile), lastOpenedFile);
             UpdateWindowTitle(lastOpenedFile);
+        }
+
+        private void SaveDarkModeState(bool enabled)
+        {
+            try
+            {
+                Directory.CreateDirectory(Application.UserAppDataPath);
+                File.WriteAllText(GetDarkModeStateFilePath(), enabled ? "1" : "0");
+            }
+            catch
+            {
+                // Non-fatal: app should still work if state can't be persisted.
+            }
+        }
+
+        private bool LoadDarkModeState()
+        {
+            try
+            {
+                string stateFilePath = GetDarkModeStateFilePath();
+                if (!File.Exists(stateFilePath)) return false;
+
+                string value = File.ReadAllText(stateFilePath).Trim();
+                return value == "1" || value.Equals("true", StringComparison.OrdinalIgnoreCase);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private void ApplyTheme(bool darkMode)
+        {
+            System.Drawing.Color background = darkMode ? System.Drawing.Color.FromArgb(30, 30, 30) : SystemColors.Control;
+            System.Drawing.Color surface = darkMode ? System.Drawing.Color.FromArgb(45, 45, 48) : SystemColors.Window;
+            System.Drawing.Color foreground = darkMode ? System.Drawing.Color.Gainsboro : SystemColors.ControlText;
+
+            ApplyThemeToControlTree(this, background, surface, foreground, darkMode);
+            ApplyThemeToMenu(menuStrip1, surface, foreground);
+            Invalidate(true);
+        }
+
+        private void ApplyThemeToControlTree(Control control, System.Drawing.Color background, System.Drawing.Color surface, System.Drawing.Color foreground, bool darkMode)
+        {
+            if (control is MenuStrip)
+            {
+                // Menu strip colors are handled by ApplyThemeToMenu.
+            }
+            else if (control is ListBox listBox)
+            {
+                listBox.BackColor = surface;
+                listBox.ForeColor = foreground;
+                listBox.BorderStyle = darkMode ? BorderStyle.FixedSingle : BorderStyle.Fixed3D;
+            }
+            else if (control is PictureBox pictureBox)
+            {
+                pictureBox.BackColor = surface;
+                pictureBox.ForeColor = foreground;
+                pictureBox.BorderStyle = darkMode ? BorderStyle.FixedSingle : BorderStyle.None;
+            }
+            else if (control is Button button)
+            {
+                button.BackColor = surface;
+                button.ForeColor = foreground;
+                button.FlatStyle = darkMode ? FlatStyle.Flat : FlatStyle.Standard;
+                if (darkMode)
+                {
+                    button.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(70, 70, 74);
+                    button.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(63, 63, 70);
+                    button.FlatAppearance.MouseDownBackColor = System.Drawing.Color.FromArgb(80, 80, 88);
+                }
+            }
+            else if (control is GroupBox groupBox)
+            {
+                groupBox.BackColor = background;
+                groupBox.ForeColor = foreground;
+            }
+            else if (control is Panel panel)
+            {
+                panel.BackColor = background;
+                panel.ForeColor = foreground;
+                panel.BorderStyle = darkMode ? BorderStyle.FixedSingle : BorderStyle.None;
+            }
+            else
+            {
+                control.BackColor = background;
+                control.ForeColor = foreground;
+            }
+
+            foreach (Control child in control.Controls)
+                ApplyThemeToControlTree(child, background, surface, foreground, darkMode);
+        }
+
+        private void ApplyThemeToMenu(MenuStrip menu, System.Drawing.Color surface, System.Drawing.Color foreground)
+        {
+            menu.BackColor = surface;
+            menu.ForeColor = foreground;
+            menu.Renderer = new ToolStripProfessionalRenderer(new ThemeColorTable(darkModeToolStripMenuItem.Checked));
+            foreach (ToolStripItem item in menu.Items)
+                ApplyThemeToMenuItem(item, surface, foreground);
+        }
+
+        private void ApplyThemeToMenuItem(ToolStripItem item, System.Drawing.Color surface, System.Drawing.Color foreground)
+        {
+            item.BackColor = surface;
+            item.ForeColor = foreground;
+
+            if (item is ToolStripDropDownItem dropDown)
+                foreach (ToolStripItem child in dropDown.DropDownItems)
+                    ApplyThemeToMenuItem(child, surface, foreground);
+        }
+
+        private void darkModeToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            ApplyTheme(darkModeToolStripMenuItem.Checked);
+            SaveDarkModeState(darkModeToolStripMenuItem.Checked);
+        }
+
+        private sealed class ThemeColorTable : ProfessionalColorTable
+        {
+            private readonly bool darkMode;
+
+            public ThemeColorTable(bool darkMode)
+            {
+                this.darkMode = darkMode;
+                UseSystemColors = !darkMode;
+            }
+
+            public override System.Drawing.Color MenuItemSelected => darkMode ? System.Drawing.Color.FromArgb(63, 63, 70) : base.MenuItemSelected;
+            public override System.Drawing.Color MenuItemBorder => darkMode ? System.Drawing.Color.FromArgb(80, 80, 88) : base.MenuItemBorder;
+            public override System.Drawing.Color MenuItemSelectedGradientBegin => darkMode ? System.Drawing.Color.FromArgb(63, 63, 70) : base.MenuItemSelectedGradientBegin;
+            public override System.Drawing.Color MenuItemSelectedGradientEnd => darkMode ? System.Drawing.Color.FromArgb(63, 63, 70) : base.MenuItemSelectedGradientEnd;
+            public override System.Drawing.Color MenuItemPressedGradientBegin => darkMode ? System.Drawing.Color.FromArgb(80, 80, 88) : base.MenuItemPressedGradientBegin;
+            public override System.Drawing.Color MenuItemPressedGradientMiddle => darkMode ? System.Drawing.Color.FromArgb(80, 80, 88) : base.MenuItemPressedGradientMiddle;
+            public override System.Drawing.Color MenuItemPressedGradientEnd => darkMode ? System.Drawing.Color.FromArgb(80, 80, 88) : base.MenuItemPressedGradientEnd;
+            public override System.Drawing.Color ToolStripDropDownBackground => darkMode ? System.Drawing.Color.FromArgb(45, 45, 48) : base.ToolStripDropDownBackground;
+            public override System.Drawing.Color ImageMarginGradientBegin => darkMode ? System.Drawing.Color.FromArgb(45, 45, 48) : base.ImageMarginGradientBegin;
+            public override System.Drawing.Color ImageMarginGradientMiddle => darkMode ? System.Drawing.Color.FromArgb(45, 45, 48) : base.ImageMarginGradientMiddle;
+            public override System.Drawing.Color ImageMarginGradientEnd => darkMode ? System.Drawing.Color.FromArgb(45, 45, 48) : base.ImageMarginGradientEnd;
         }
 
         private void UpdateWindowTitle(string filePath)
@@ -238,18 +388,32 @@ namespace FFVI_tileTool
 
         private void button1_Click(object sender, EventArgs e)
         {
-            using (SaveFileDialog sfd = new SaveFileDialog() { Filter = "*.PNG|*.PNG", FileName = $"{listBox1.SelectedValue}_chunk1.png" })
-                if(listBox1.Items.Count != 0)
-                    if (sfd.ShowDialog() == DialogResult.OK)
-                        pictureBox1.Image.Save(sfd.FileName);
+            ExportImage(pictureBox1.Image, $"{listBox1.SelectedValue}_chunk1");
         }
 
         private void button4_Click(object sender, EventArgs e)
         {
-            using (SaveFileDialog sfd = new SaveFileDialog() { Filter = "*.PNG|*.PNG", FileName = $"{listBox1.SelectedValue}_chunk2.png" })
-                if (listBox1.Items.Count != 0)
-                    if (sfd.ShowDialog() == DialogResult.OK)
-                        pictureBox2.Image.Save(sfd.FileName);
+            ExportImage(pictureBox2.Image, $"{listBox1.SelectedValue}_chunk2");
+        }
+
+        private void ExportImage(Image image, string defaultBaseFileName)
+        {
+            if (listBox1.Items.Count == 0 || image == null) return;
+
+            using (SaveFileDialog sfd = new SaveFileDialog()
+            {
+                Filter = "PNG files (*.png)|*.png|BMP files (*.bmp)|*.bmp",
+                FilterIndex = 1,
+                AddExtension = true,
+                DefaultExt = "png",
+                FileName = $"{defaultBaseFileName}.png"
+            })
+                if (sfd.ShowDialog() == DialogResult.OK)
+                {
+                    string extension = Path.GetExtension(sfd.FileName).ToLowerInvariant();
+                    ImageFormat format = extension == ".bmp" ? ImageFormat.Bmp : ImageFormat.Png;
+                    image.Save(sfd.FileName, format);
+                }
         }
 
         private void button2_Click(object sender, EventArgs e)
