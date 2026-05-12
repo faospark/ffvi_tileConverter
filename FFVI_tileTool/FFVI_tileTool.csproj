@@ -9,6 +9,7 @@
     <RootNamespace>FFVI_tileTool</RootNamespace>
     <AssemblyName>FFVI_tileTool</AssemblyName>
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+    <ApplicationIcon>app.ico</ApplicationIcon>
     <FileAlignment>512</FileAlignment>
     <Deterministic>true</Deterministic>
   </PropertyGroup>
@@ -62,6 +63,7 @@
     </Compile>
   </ItemGroup>
   <ItemGroup>
+    <Content Include="app.ico" />
     <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>

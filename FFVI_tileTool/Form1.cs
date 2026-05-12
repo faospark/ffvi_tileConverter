@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Data;
 using System.Drawing;
 using System.Drawing.Imaging;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.IO.Compression;
@@ -16,16 +17,44 @@ namespace FFVI_tileTool
 {
     public partial class Form1 : Form
     {
+        private enum MapCategoryFilter
+        {
+            Off,
+            SnowTiles,
+            GrassTiles
+        }
+
+        private const int DwmwaUseImmersiveDarkMode = 20;
+        private const int DwmwaUseImmersiveDarkModeBefore20H1 = 19;
         private const string LastOpenedFileStateName = "last-opened-map.txt";
         private const string DarkModeStateName = "dark-mode.txt";
         private const string BackupReminderStateName = "backup-reminder-shown.txt";
         private const string DefaultWindowTitle = "FFVI tile tool";
 
+        private static readonly HashSet<string> SnowTileMaps = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "map211.bin", "map018.bin", "map019.bin", "map020.bin", "map021.bin", "map022.bin", "map023.bin",
+            "map032.bin", "map033.bin", "map034.bin", "map035.bin", "map039.bin"
+        };
+
+        private static readonly HashSet<string> GrassTileMaps = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "map395.bin", "map014.bin", "map047.bin", "map075.bin", "map093.bin", "map115.bin", "map148.bin",
+            "map157.bin", "map159.bin", "map169.bin", "map170.bin", "map182.bin", "map185.bin", "map188.bin",
+            "map198.bin", "map302.bin", "map340.bin", "map341.bin", "map342.bin", "map343.bin", "map389.bin", "map392.bin"
+        };
+
+        [DllImport("dwmapi.dll", PreserveSig = true)]
+        private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int pvAttribute, int cbAttribute);
+
         string[] st;
+        private string[] allMapFiles = new string[0];
+        private MapCategoryFilter activeMapFilter = MapCategoryFilter.Off;
         private bool backupReminderHandledSession;
         public Form1()
         {
             InitializeComponent();
+            Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
             Text = DefaultWindowTitle;
 
             bool darkModeEnabled = LoadDarkModeState();
@@ -33,6 +62,12 @@ namespace FFVI_tileTool
             ApplyTheme(darkModeEnabled);
 
             RestoreLastOpenedFile();
+        }
+
+        protected override void OnHandleCreated(EventArgs e)
+        {
+            base.OnHandleCreated(e);
+            ApplyTitleBarTheme(darkModeToolStripMenuItem.Checked);
         }
 
         private void browseToolStripMenuItem_Click(object sender, EventArgs e)
@@ -79,29 +114,105 @@ namespace FFVI_tileTool
             if (st == null) return;
             if (st.Length == 0) return;
 
-            
-            string filePath = st.Where(x => Path.GetFileName(x) == (string)listBox.SelectedValue).First();
+            string filePath = GetSelectedMapFilePath();
+            if (string.IsNullOrWhiteSpace(filePath)) return;
             RenderImage(filePath);
             SaveLastOpenedFile(filePath);
             UpdateWindowTitle(filePath);
+        }
+
+        private string GetSelectedMapFilePath()
+        {
+            if (st == null || st.Length == 0 || listBox1.SelectedValue == null) return null;
+
+            string selectedName = listBox1.SelectedValue as string;
+            if (string.IsNullOrWhiteSpace(selectedName)) return null;
+
+            return st.FirstOrDefault(x => string.Equals(Path.GetFileName(x), selectedName, StringComparison.OrdinalIgnoreCase));
+        }
+
+        private void listBox1_MouseDown(object sender, MouseEventArgs e)
+        {
+            if (e.Button != MouseButtons.Right) return;
+
+            int index = listBox1.IndexFromPoint(e.Location);
+            if (index != ListBox.NoMatches)
+                listBox1.SelectedIndex = index;
+        }
+
+        private void revealInFileExplorerToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            string filePath = GetSelectedMapFilePath();
+            if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
+            {
+                ShowAppMessage("Unable to locate the selected file.", "Reveal in File Explorer", MessageBoxIcon.Warning);
+                return;
+            }
+
+            Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{filePath}\"") { UseShellExecute = true });
+        }
+
+        private void gzipThisFileToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            string filePath = GetSelectedMapFilePath();
+            if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
+            {
+                ShowAppMessage("Unable to locate the selected file.", "Gzip file", MessageBoxIcon.Warning);
+                return;
+            }
+
+            string gzipPath = filePath + ".gz";
+
+            try
+            {
+                if (File.Exists(gzipPath))
+                    File.Delete(gzipPath);
+
+                using (FileStream inputStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read))
+                using (FileStream outputStream = new FileStream(gzipPath, FileMode.Create, FileAccess.Write, FileShare.None))
+                using (GZipStream gzipStream = new GZipStream(outputStream, CompressionMode.Compress))
+                    inputStream.CopyTo(gzipStream);
+
+                ShowAppMessage($"Gzip created successfully.\n\nOutput: {gzipPath}", "Gzip file", MessageBoxIcon.Information);
+            }
+            catch (Exception ex)
+            {
+                ShowAppMessage($"Failed to create gzip file.\n\n{ex.Message}", "Gzip file", MessageBoxIcon.Warning);
+            }
         }
 
         private void LoadMapFilesFromFolder(string folderPath, string fileToSelect = null)
         {
             if (string.IsNullOrWhiteSpace(folderPath) || !Directory.Exists(folderPath))
             {
+                allMapFiles = new string[0];
                 st = new string[0];
                 listBox1.DataSource = null;
                 return;
             }
 
-            st = Directory.GetFiles(folderPath, "map*.bin", SearchOption.TopDirectoryOnly);
-            if (st.Length == 0)
+            allMapFiles = Directory.GetFiles(folderPath, "map*.bin", SearchOption.TopDirectoryOnly);
+            if (allMapFiles.Length == 0)
             {
+                st = new string[0];
                 listBox1.DataSource = null;
                 return;
             }
 
+            ApplyMapCategoryFilter(fileToSelect);
+
+            MaybeShowFirstRunBackupWarning(folderPath);
+        }
+
+        private void ApplyMapCategoryFilter(string fileToSelect = null)
+        {
+            IEnumerable<string> query = allMapFiles;
+            if (activeMapFilter == MapCategoryFilter.SnowTiles)
+                query = query.Where(x => SnowTileMaps.Contains(Path.GetFileName(x)));
+            else if (activeMapFilter == MapCategoryFilter.GrassTiles)
+                query = query.Where(x => GrassTileMaps.Contains(Path.GetFileName(x)));
+
+            st = query.OrderBy(Path.GetFileName).ToArray();
             string[] fileNames = st.Select(Path.GetFileName).ToArray();
             listBox1.DataSource = fileNames;
 
@@ -115,7 +226,34 @@ namespace FFVI_tileTool
             if (listBox1.Items.Count > 0 && listBox1.SelectedIndex < 0)
                 listBox1.SelectedIndex = 0;
 
-            MaybeShowFirstRunBackupWarning(folderPath);
+            if (listBox1.Items.Count == 0)
+            {
+                pictureBox1.Image = null;
+                pictureBox2.Image = null;
+                UpdateWindowTitle(null);
+            }
+
+            UpdateFilterMenuChecks();
+        }
+
+        private void UpdateFilterMenuChecks()
+        {
+            filterOffToolStripMenuItem.Checked = activeMapFilter == MapCategoryFilter.Off;
+            filterSnowTilesToolStripMenuItem.Checked = activeMapFilter == MapCategoryFilter.SnowTiles;
+            filterGrassTilesToolStripMenuItem.Checked = activeMapFilter == MapCategoryFilter.GrassTiles;
+        }
+
+        private void SetActiveMapFilter(MapCategoryFilter filter)
+        {
+            activeMapFilter = filter;
+            ApplyMapCategoryFilter();
+        }
+
+        private string GetFilterLabel()
+        {
+            if (activeMapFilter == MapCategoryFilter.SnowTiles) return "SnowTiles";
+            if (activeMapFilter == MapCategoryFilter.GrassTiles) return "GrassTiles";
+            return "AllMaps";
         }
 
         private static string[] GetMapGzipFiles(string folderPath)
@@ -454,7 +592,18 @@ namespace FFVI_tileTool
 
             ApplyThemeToControlTree(this, background, surface, foreground, darkMode);
             ApplyThemeToMenu(menuStrip1, surface, foreground);
+            ApplyTitleBarTheme(darkMode);
             Invalidate(true);
+        }
+
+        private void ApplyTitleBarTheme(bool darkMode)
+        {
+            if (!IsHandleCreated) return;
+
+            int useDarkMode = darkMode ? 1 : 0;
+            int result = DwmSetWindowAttribute(Handle, DwmwaUseImmersiveDarkMode, ref useDarkMode, sizeof(int));
+            if (result != 0)
+                DwmSetWindowAttribute(Handle, DwmwaUseImmersiveDarkModeBefore20H1, ref useDarkMode, sizeof(int));
         }
 
         private void GetThemeColors(bool darkMode, out System.Drawing.Color background, out System.Drawing.Color surface, out System.Drawing.Color foreground)
@@ -729,6 +878,20 @@ namespace FFVI_tileTool
             menu.ForeColor = foreground;
             menu.Renderer = new ToolStripProfessionalRenderer(new ThemeColorTable(darkModeToolStripMenuItem.Checked));
             foreach (ToolStripItem item in menu.Items)
+                ApplyThemeToMenuItem(item, surface, foreground);
+
+            ApplyThemeToContextMenu(fileListContextMenuStrip, surface, foreground);
+        }
+
+        private void ApplyThemeToContextMenu(ContextMenuStrip contextMenu, System.Drawing.Color surface, System.Drawing.Color foreground)
+        {
+            if (contextMenu == null) return;
+
+            contextMenu.BackColor = surface;
+            contextMenu.ForeColor = foreground;
+            contextMenu.Renderer = new ToolStripProfessionalRenderer(new ThemeColorTable(darkModeToolStripMenuItem.Checked));
+
+            foreach (ToolStripItem item in contextMenu.Items)
                 ApplyThemeToMenuItem(item, surface, foreground);
         }
 
@@ -1253,6 +1416,74 @@ namespace FFVI_tileTool
                 $"Backup finished.\n\nBacked up: {backedUpCount}\nSkipped existing: {skippedCount}\nFailed: {failedCount}\nOutput folder: {outputFolder}",
                 "Map backup",
                 failedCount == 0 ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
+        }
+
+        private void filterOffToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            SetActiveMapFilter(MapCategoryFilter.Off);
+        }
+
+        private void filterSnowTilesToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            SetActiveMapFilter(MapCategoryFilter.SnowTiles);
+        }
+
+        private void filterGrassTilesToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            SetActiveMapFilter(MapCategoryFilter.GrassTiles);
+        }
+
+        private void isolateFilteredFilesToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (st == null || st.Length == 0)
+            {
+                ShowAppMessage("No files are currently available in the selected filter.", "Isolate filtered files", MessageBoxIcon.Warning);
+                return;
+            }
+
+            string sourceFolder = Path.GetDirectoryName(st[0]);
+            if (string.IsNullOrWhiteSpace(sourceFolder) || !Directory.Exists(sourceFolder))
+            {
+                ShowAppMessage("Unable to locate current source folder.", "Isolate filtered files", MessageBoxIcon.Warning);
+                return;
+            }
+
+            string destinationRoot = Path.Combine(sourceFolder, "filtered_sets");
+            Directory.CreateDirectory(destinationRoot);
+
+            string destinationFolder = Path.Combine(destinationRoot, $"{GetFilterLabel()}_{DateTime.Now:yyyyMMdd_HHmmss}");
+            Directory.CreateDirectory(destinationFolder);
+
+            int copiedCount = 0;
+            int failedCount = 0;
+            foreach (string filePath in st)
+            {
+                try
+                {
+                    string destinationPath = Path.Combine(destinationFolder, Path.GetFileName(filePath));
+                    File.Copy(filePath, destinationPath, false);
+                    copiedCount++;
+                }
+                catch
+                {
+                    failedCount++;
+                }
+            }
+
+            DialogResult openDecision = ShowAppMessageWithActions(
+                $"Filtered set created.\n\nCopied: {copiedCount}\nFailed: {failedCount}\nFolder: {destinationFolder}\n\nOpen this isolated folder now?",
+                "Isolate filtered files",
+                "Open Folder",
+                "Keep Current",
+                failedCount == 0 ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
+
+            if (openDecision == DialogResult.OK)
+            {
+                activeMapFilter = MapCategoryFilter.Off;
+                LoadMapFilesFromFolder(destinationFolder);
+                if (st != null && st.Length > 0)
+                    SaveLastOpenedFile(st[0]);
+            }
         }
     }
 }
