@@ -24,7 +24,9 @@ Workflow:
 	- first 1024 bytes: palette
 	- remaining bytes: chunk 1 image indices
 7. App writes this buffer to the currently selected `map*.bin` file at offset `0`.
-8. App saves and reloads the preview.
+8. App also mirrors the same chunk 1 palette to additional palette bank offsets when present:
+	- `0x40400` to `0x44000` in steps of `0x400`
+9. App saves and reloads the preview.
 
 ## Import Chunk 2
 

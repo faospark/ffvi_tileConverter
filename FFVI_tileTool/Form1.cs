@@ -597,6 +597,7 @@ namespace FFVI_tileTool
             string filePath = st.Where(x => Path.GetFileName(x) == (string)listBox1.SelectedValue).First();
             byte[] bb = File.ReadAllBytes(filePath);
             Buffer.BlockCopy(b, 0, bb, 0, b.Length);
+            MirrorChunk1PaletteBanks(bb, palBuffer);
             File.WriteAllBytes(filePath, bb);
             RenderImage(filePath);
         }
@@ -704,6 +705,23 @@ namespace FFVI_tileTool
                 bool isTransparent = sourceColor.A < 128;
                 if (isKeyColor || isTransparent)
                     pixelBuffer[i] = (byte)keyIndex;
+            }
+        }
+
+        private static void MirrorChunk1PaletteBanks(byte[] fileBuffer, byte[] paletteBuffer)
+        {
+            int[] paletteBankOffsets = new int[]
+            {
+                0x40400, 0x40800, 0x40C00, 0x41000,
+                0x41400, 0x41800, 0x41C00, 0x42000,
+                0x42400, 0x42800, 0x42C00, 0x43000,
+                0x43400, 0x43800, 0x43C00, 0x44000
+            };
+
+            foreach (int offset in paletteBankOffsets)
+            {
+                if (offset < 0 || offset + 1024 > fileBuffer.Length) continue;
+                Buffer.BlockCopy(paletteBuffer, 0, fileBuffer, offset, 1024);
             }
         }
 
