@@ -19,20 +19,6 @@ namespace FFVI_tileTool
         private const string DarkModeStateName = "dark-mode.txt";
         private const string DefaultWindowTitle = "FFVI tile tool";
 
-        struct Color
-        {
-            public byte R;
-            public byte G;
-            public byte B;
-            public byte A;
-        }
-
-        struct MapTile
-        {
-            public Color[] palette;
-            public byte[] imgBuff;
-        }
-
         string[] st;
         public Form1()
         {
@@ -195,13 +181,169 @@ namespace FFVI_tileTool
 
         private void ApplyTheme(bool darkMode)
         {
-            System.Drawing.Color background = darkMode ? System.Drawing.Color.FromArgb(30, 30, 30) : SystemColors.Control;
-            System.Drawing.Color surface = darkMode ? System.Drawing.Color.FromArgb(45, 45, 48) : SystemColors.Window;
-            System.Drawing.Color foreground = darkMode ? System.Drawing.Color.Gainsboro : SystemColors.ControlText;
+            GetThemeColors(darkMode, out System.Drawing.Color background, out System.Drawing.Color surface, out System.Drawing.Color foreground);
 
             ApplyThemeToControlTree(this, background, surface, foreground, darkMode);
             ApplyThemeToMenu(menuStrip1, surface, foreground);
             Invalidate(true);
+        }
+
+        private void GetThemeColors(bool darkMode, out System.Drawing.Color background, out System.Drawing.Color surface, out System.Drawing.Color foreground)
+        {
+            background = darkMode ? System.Drawing.Color.FromArgb(30, 30, 30) : SystemColors.Control;
+            surface = darkMode ? System.Drawing.Color.FromArgb(45, 45, 48) : SystemColors.Window;
+            foreground = darkMode ? System.Drawing.Color.Gainsboro : SystemColors.ControlText;
+        }
+
+        private DialogResult ShowAppMessage(string message, string title, MessageBoxIcon icon = MessageBoxIcon.None)
+        {
+            bool darkMode = darkModeToolStripMenuItem.Checked;
+            using (Form dialog = new Form())
+            using (Label messageLabel = new Label())
+            using (Button okButton = new Button())
+            {
+                dialog.Text = title;
+                dialog.FormBorderStyle = FormBorderStyle.FixedDialog;
+                dialog.StartPosition = FormStartPosition.CenterParent;
+                dialog.MinimizeBox = false;
+                dialog.MaximizeBox = false;
+                dialog.ShowInTaskbar = false;
+                dialog.ClientSize = new Size(560, 190);
+                dialog.AcceptButton = okButton;
+
+                string iconText = string.Empty;
+                if (icon == MessageBoxIcon.Warning) iconText = "Warning\n\n";
+                else if (icon == MessageBoxIcon.Information) iconText = "Information\n\n";
+                else if (icon == MessageBoxIcon.Error) iconText = "Error\n\n";
+
+                messageLabel.AutoSize = false;
+                messageLabel.Dock = DockStyle.Fill;
+                messageLabel.Padding = new Padding(14, 12, 14, 8);
+                messageLabel.TextAlign = ContentAlignment.TopLeft;
+                messageLabel.Text = iconText + message;
+
+                okButton.Text = "OK";
+                okButton.Size = new Size(90, 28);
+                okButton.Location = new Point(dialog.ClientSize.Width - okButton.Width - 12, dialog.ClientSize.Height - okButton.Height - 12);
+                okButton.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
+                okButton.DialogResult = DialogResult.OK;
+
+                dialog.Controls.Add(messageLabel);
+                dialog.Controls.Add(okButton);
+
+                GetThemeColors(darkMode, out System.Drawing.Color background, out System.Drawing.Color surface, out System.Drawing.Color foreground);
+                ApplyThemeToControlTree(dialog, background, surface, foreground, darkMode);
+
+                return dialog.ShowDialog(this);
+            }
+        }
+
+        private bool ShowMassExportCautionDialog()
+        {
+            bool darkMode = darkModeToolStripMenuItem.Checked;
+            using (Form dialog = new Form())
+            using (Label messageLabel = new Label())
+            using (Panel buttonPanel = new Panel())
+            using (Button proceedButton = new Button())
+            using (Button cancelButton = new Button())
+            {
+                dialog.Text = "Mass export caution";
+                dialog.FormBorderStyle = FormBorderStyle.FixedDialog;
+                dialog.StartPosition = FormStartPosition.CenterParent;
+                dialog.MinimizeBox = false;
+                dialog.MaximizeBox = false;
+                dialog.ShowInTaskbar = false;
+                dialog.ClientSize = new Size(620, 220);
+
+                messageLabel.AutoSize = false;
+                messageLabel.Dock = DockStyle.Fill;
+                messageLabel.Padding = new Padding(14, 12, 14, 8);
+                messageLabel.TextAlign = ContentAlignment.TopLeft;
+                messageLabel.Text = "Warning\n\nThis method is not necessarily recommended if you are not familiar with the tiles.\nProceed with caution.";
+
+                buttonPanel.Dock = DockStyle.Bottom;
+                buttonPanel.Height = 50;
+                buttonPanel.Padding = new Padding(0, 11, 12, 11);
+
+                proceedButton.Text = "Proceed";
+                proceedButton.Size = new Size(100, 28);
+                proceedButton.Dock = DockStyle.Right;
+                proceedButton.DialogResult = DialogResult.OK;
+
+                cancelButton.Text = "Cancel";
+                cancelButton.Size = new Size(100, 28);
+                cancelButton.Dock = DockStyle.Right;
+                cancelButton.DialogResult = DialogResult.Cancel;
+
+                dialog.AcceptButton = proceedButton;
+                dialog.CancelButton = cancelButton;
+                dialog.Controls.Add(messageLabel);
+                dialog.Controls.Add(buttonPanel);
+                buttonPanel.Controls.Add(cancelButton);
+                buttonPanel.Controls.Add(proceedButton);
+
+                GetThemeColors(darkMode, out System.Drawing.Color background, out System.Drawing.Color surface, out System.Drawing.Color foreground);
+                ApplyThemeToControlTree(dialog, background, surface, foreground, darkMode);
+
+                return dialog.ShowDialog(this) == DialogResult.OK;
+            }
+        }
+
+        private string ShowMassExportFormatDialog()
+        {
+            bool darkMode = darkModeToolStripMenuItem.Checked;
+            using (Form dialog = new Form())
+            using (Label messageLabel = new Label())
+            using (Button pngButton = new Button())
+            using (Button bmpButton = new Button())
+            using (Button cancelButton = new Button())
+            {
+                dialog.Text = "Choose export format";
+                dialog.FormBorderStyle = FormBorderStyle.FixedDialog;
+                dialog.StartPosition = FormStartPosition.CenterParent;
+                dialog.MinimizeBox = false;
+                dialog.MaximizeBox = false;
+                dialog.ShowInTaskbar = false;
+                dialog.ClientSize = new Size(520, 190);
+
+                messageLabel.AutoSize = false;
+                messageLabel.Dock = DockStyle.Top;
+                messageLabel.Height = 90;
+                messageLabel.Padding = new Padding(14, 12, 14, 8);
+                messageLabel.TextAlign = ContentAlignment.TopLeft;
+                messageLabel.Text = "Select export format for mass export:";
+
+                string selectedFormat = null;
+
+                pngButton.Text = "Export .PNG";
+                pngButton.Size = new Size(110, 30);
+                pngButton.Location = new Point(14, 112);
+                pngButton.Click += (s, e) => { selectedFormat = "png"; dialog.DialogResult = DialogResult.OK; dialog.Close(); };
+
+                bmpButton.Text = "Export .BMP";
+                bmpButton.Size = new Size(110, 30);
+                bmpButton.Location = new Point(130, 112);
+                bmpButton.Click += (s, e) => { selectedFormat = "bmp"; dialog.DialogResult = DialogResult.OK; dialog.Close(); };
+
+                cancelButton.Text = "Cancel";
+                cancelButton.Size = new Size(90, 30);
+                cancelButton.Location = new Point(dialog.ClientSize.Width - 102, 112);
+                cancelButton.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+                cancelButton.DialogResult = DialogResult.Cancel;
+
+                dialog.CancelButton = cancelButton;
+                dialog.Controls.Add(messageLabel);
+                dialog.Controls.Add(pngButton);
+                dialog.Controls.Add(bmpButton);
+                dialog.Controls.Add(cancelButton);
+
+                GetThemeColors(darkMode, out System.Drawing.Color background, out System.Drawing.Color surface, out System.Drawing.Color foreground);
+                ApplyThemeToControlTree(dialog, background, surface, foreground, darkMode);
+
+                DialogResult result = dialog.ShowDialog(this);
+                if (result != DialogResult.OK) return null;
+                return selectedFormat;
+            }
         }
 
         private void ApplyThemeToControlTree(Control control, System.Drawing.Color background, System.Drawing.Color surface, System.Drawing.Color foreground, bool darkMode)
@@ -319,71 +461,72 @@ namespace FFVI_tileTool
             Text = $"{DefaultWindowTitle} - {relativePath}";
         }
 
+        private static Bitmap BuildIndexedBitmap(byte[] imageBuffer, byte[] paletteBuffer, int width, int height)
+        {
+            Bitmap bitmap = new Bitmap(width, height, PixelFormat.Format8bppIndexed);
+            ColorPalette palette = bitmap.Palette;
+            for (int i = 0; i < 256; i++)
+            {
+                palette.Entries[i] = System.Drawing.Color.FromArgb(
+                    255 - paletteBuffer[i * 4 + 3],
+                    paletteBuffer[i * 4 + 2],
+                    paletteBuffer[i * 4 + 1],
+                    paletteBuffer[i * 4 + 0]);
+            }
+            bitmap.Palette = palette;
+
+            BitmapData bitmapData = bitmap.LockBits(new Rectangle(0, 0, bitmap.Width, bitmap.Height), ImageLockMode.WriteOnly, PixelFormat.Format8bppIndexed);
+            Marshal.Copy(imageBuffer, 0, bitmapData.Scan0, imageBuffer.Length);
+            bitmap.UnlockBits(bitmapData);
+
+            return bitmap;
+        }
+
+        private static void LoadChunkBitmaps(string filePath, out Bitmap firstChunk, out Bitmap secondChunk)
+        {
+            byte[] firstPaletteBuffer;
+            byte[] firstImageBuffer;
+            byte[] secondPaletteBuffer = new byte[1024];
+            byte[] secondImageBuffer = new byte[0];
+
+            using (FileStream fs = new FileStream(filePath, FileMode.Open, FileAccess.Read))
+            using (BinaryReader br = new BinaryReader(fs))
+            {
+                firstPaletteBuffer = br.ReadBytes(1024);
+                firstImageBuffer = br.ReadBytes(512 * 512);
+
+                if (fs.Length > 0x80400 + 1024)
+                {
+                    fs.Seek(-0x80400, SeekOrigin.End);
+                    secondPaletteBuffer = br.ReadBytes(1024);
+                    secondImageBuffer = br.ReadBytes((int)(fs.Length - fs.Position));
+                }
+            }
+
+            firstChunk = BuildIndexedBitmap(firstImageBuffer, firstPaletteBuffer, 512, 512);
+
+            if (secondImageBuffer.Length > 512)
+                secondChunk = BuildIndexedBitmap(secondImageBuffer, secondPaletteBuffer, 512, secondImageBuffer.Length / 512);
+            else
+                secondChunk = null;
+        }
+
         private void RenderImage(string file)
         {
-            byte[] paletteBuffer = new byte[1024];
-            byte[] secPaletteBuffer = new byte[4096];
-            FileStream fs = new FileStream(file, FileMode.Open, FileAccess.Read);
-            BinaryReader br = new BinaryReader(fs);
-            paletteBuffer = br.ReadBytes(1024);
-            byte[] firstImageBuffer = br.ReadBytes(512 * 512);
-            //secPaletteBuffer = br.ReadBytes(4096);
-            byte[] secondImageBuffer = new byte[0];
-            if (fs.Length > 0x80400 + 1024)
+            Bitmap oldFirst = pictureBox1.Image as Bitmap;
+            Bitmap oldSecond = pictureBox2.Image as Bitmap;
+
+            LoadChunkBitmaps(file, out Bitmap firstChunk, out Bitmap secondChunk);
+
+            pictureBox1.Size = firstChunk.Size;
+            pictureBox1.Image = firstChunk;
+            panel1.AutoScrollMinSize = firstChunk.Size;
+
+            if (secondChunk != null)
             {
-                fs.Seek(-0x80400, SeekOrigin.End); //Ark's hack
-                secPaletteBuffer = br.ReadBytes(1024);
-                secondImageBuffer = br.ReadBytes((int)(fs.Length - fs.Position));
-            }
-            br.Close();
-            fs.Close();
-            fs.Dispose();
-
-
-            Bitmap bmpOne = new Bitmap(512, 512, PixelFormat.Format8bppIndexed);
-
-            MapTile mapTile = new MapTile() { palette = new Color[256], imgBuff = firstImageBuffer };
-            for (int i = 0; i < mapTile.palette.Length; i++)
-                mapTile.palette[i] = new Color() { R = paletteBuffer[i * 4], G = paletteBuffer[i * 4 + 1], B = paletteBuffer[i * 4 + 2], A = paletteBuffer[i * 4 + 3] };
-            ColorPalette cp = bmpOne.Palette;
-            for (int i = 0; i < 256; i++)
-                cp.Entries[i] = System.Drawing.Color.FromArgb(
-                    255 - mapTile.palette[i].A,
-                    mapTile.palette[i].B,
-                    mapTile.palette[i].G,
-                    mapTile.palette[i].R);
-            bmpOne.Palette = cp;
-            BitmapData bmpData = bmpOne.LockBits(new Rectangle(0, 0, bmpOne.Width, bmpOne.Height), ImageLockMode.WriteOnly, PixelFormat.Format8bppIndexed);
-            byte[] bmpDataBuffer = new byte[bmpData.Width * bmpData.Height];
-            Marshal.Copy(mapTile.imgBuff, 0, bmpData.Scan0, mapTile.imgBuff.Length);
-            bmpOne.UnlockBits(bmpData);
-
-            pictureBox1.Size = bmpOne.Size;
-            pictureBox1.Image = bmpOne;
-
-            //two
-            if (secondImageBuffer.Length > 512)
-            {
-                Bitmap bmpTwo = new Bitmap(512, secondImageBuffer.Length / 512, PixelFormat.Format8bppIndexed);
-                mapTile = new MapTile() { palette = new Color[256], imgBuff = secondImageBuffer };
-                for (int i = 0; i < mapTile.palette.Length; i++)
-                    mapTile.palette[i] = new Color() { R = secPaletteBuffer[i * 4], G = secPaletteBuffer[i * 4 + 1], B = secPaletteBuffer[i * 4 + 2], A = secPaletteBuffer[i * 4 + 3] };
-                cp = bmpTwo.Palette;
-                for (int i = 0; i < 256; i++)
-                    cp.Entries[i] = System.Drawing.Color.FromArgb(
-                        255 - mapTile.palette[i].A,
-                        mapTile.palette[i].B,
-                        mapTile.palette[i].G,
-                        mapTile.palette[i].R);
-                bmpTwo.Palette = cp;
-                bmpData = bmpTwo.LockBits(new Rectangle(0, 0, bmpTwo.Width, bmpTwo.Height), ImageLockMode.WriteOnly, PixelFormat.Format8bppIndexed);
-                bmpDataBuffer = new byte[bmpData.Width * bmpData.Height];
-                Marshal.Copy(mapTile.imgBuff, 0, bmpData.Scan0, mapTile.imgBuff.Length);
-                bmpTwo.UnlockBits(bmpData);
-
-                pictureBox2.Size = bmpTwo.Size;
-                panel2.AutoScrollMinSize = bmpTwo.Size;
-                pictureBox2.Image = bmpTwo;
+                pictureBox2.Size = secondChunk.Size;
+                panel2.AutoScrollMinSize = secondChunk.Size;
+                pictureBox2.Image = secondChunk;
             }
             else
             {
@@ -392,8 +535,8 @@ namespace FFVI_tileTool
                 pictureBox2.Image = null;
             }
 
-            pictureBox1.Image = bmpOne;
-
+            oldFirst?.Dispose();
+            oldSecond?.Dispose();
         }
 
         private void button1_Click(object sender, EventArgs e)
@@ -438,12 +581,12 @@ namespace FFVI_tileTool
             Bitmap bmp = new Bitmap(path);
             if(bmp.PixelFormat != PixelFormat.Format8bppIndexed)
             {
-                MessageBox.Show("Image is not 8BPP indexed.");
+                ShowAppMessage("Image is not 8BPP indexed.", "Import warning", MessageBoxIcon.Warning);
                 return;
             }
             if(bmp.Height != 512 || bmp.Width != 512)
             {
-                MessageBox.Show($"Chunk 1 is always 512x512. You are trying to import {bmp.Width}x{bmp.Height}.");
+                ShowAppMessage($"Chunk 1 is always 512x512. You are trying to import {bmp.Width}x{bmp.Height}.", "Import warning", MessageBoxIcon.Warning);
                 return;
             }
             byte[] palBuffer = BuildPalette(bmp);
@@ -472,12 +615,12 @@ namespace FFVI_tileTool
             Bitmap bmp = new Bitmap(path);
             if (bmp.PixelFormat != PixelFormat.Format8bppIndexed)
             {
-                MessageBox.Show("Image is not 8BPP indexed.");
+                ShowAppMessage("Image is not 8BPP indexed.", "Import warning", MessageBoxIcon.Warning);
                 return;
             }
             if (bmp.Width != 512)
             {
-                MessageBox.Show($"Chunk 2 is always 512 pixels wide. You are trying to import {bmp.Width}x{bmp.Height}.");
+                ShowAppMessage($"Chunk 2 is always 512 pixels wide. You are trying to import {bmp.Width}x{bmp.Height}.", "Import warning", MessageBoxIcon.Warning);
                 return;
             }
             byte[] palBuffer = BuildPalette(bmp);
@@ -532,8 +675,155 @@ namespace FFVI_tileTool
 
         private void browseAndMassExportToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            MessageBox.Show("In next release! Sorry, forgot about it yet I want to release working version right now");
-            return;
+            string lastOpenedFile = LoadLastOpenedFile();
+            string initialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+            if (!string.IsNullOrWhiteSpace(lastOpenedFile) && File.Exists(lastOpenedFile))
+                initialDirectory = Path.GetDirectoryName(lastOpenedFile);
+
+            string sourceFolder;
+            using (OpenFileDialog folderDialog = new OpenFileDialog()
+            {
+                Title = "Select folder containing map*.bin files",
+                Filter = "Folder selection|*.folder",
+                CheckFileExists = false,
+                CheckPathExists = true,
+                ValidateNames = false,
+                FileName = "Select this folder",
+                InitialDirectory = initialDirectory,
+                Multiselect = false
+            })
+            {
+                if (folderDialog.ShowDialog() != DialogResult.OK) return;
+
+                sourceFolder = Path.GetDirectoryName(folderDialog.FileName);
+                if (string.IsNullOrWhiteSpace(sourceFolder) || !Directory.Exists(sourceFolder)) return;
+            }
+
+            string[] mapFiles = Directory.GetFiles(sourceFolder, "map*.bin", SearchOption.TopDirectoryOnly)
+                .OrderBy(Path.GetFileName)
+                .ToArray();
+
+            if (mapFiles.Length == 0)
+            {
+                ShowAppMessage("No map*.bin files found in the selected folder.", "Mass export", MessageBoxIcon.Warning);
+                return;
+            }
+
+            if (!ShowMassExportCautionDialog()) return;
+
+            string exportExtension = ShowMassExportFormatDialog();
+            if (string.IsNullOrWhiteSpace(exportExtension)) return;
+
+            ImageFormat exportImageFormat = exportExtension == "bmp" ? ImageFormat.Bmp : ImageFormat.Png;
+
+            string exportFolder = Path.Combine(sourceFolder, "mass_export");
+            Directory.CreateDirectory(exportFolder);
+
+            using (Form progressForm = new Form())
+            using (Label statusLabel = new Label())
+            using (ProgressBar progressBar = new ProgressBar())
+            using (Button cancelButton = new Button())
+            {
+                    progressForm.Text = "Mass export in progress";
+                    progressForm.FormBorderStyle = FormBorderStyle.FixedDialog;
+                    progressForm.StartPosition = FormStartPosition.CenterParent;
+                    progressForm.MinimizeBox = false;
+                    progressForm.MaximizeBox = false;
+                    progressForm.ControlBox = false;
+                    progressForm.ClientSize = new Size(520, 120);
+
+                    statusLabel.AutoSize = false;
+                    statusLabel.TextAlign = ContentAlignment.MiddleLeft;
+                    statusLabel.Dock = DockStyle.Top;
+                    statusLabel.Height = 56;
+                    statusLabel.Text = "Preparing export...";
+
+                    progressBar.Dock = DockStyle.Bottom;
+                    progressBar.Height = 24;
+                    progressBar.Minimum = 0;
+                    progressBar.Maximum = mapFiles.Length;
+                    progressBar.Value = 0;
+
+                    bool cancelRequested = false;
+                    cancelButton.Text = "Cancel";
+                    cancelButton.Size = new Size(90, 26);
+                    cancelButton.Location = new Point(progressForm.ClientSize.Width - cancelButton.Width - 12, 62);
+                    cancelButton.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+                    cancelButton.Click += (s, evt) =>
+                    {
+                        cancelRequested = true;
+                        cancelButton.Enabled = false;
+                        statusLabel.Text = "Cancelling after current file...";
+                    };
+
+                    progressForm.Controls.Add(statusLabel);
+                    progressForm.Controls.Add(cancelButton);
+                    progressForm.Controls.Add(progressBar);
+                    GetThemeColors(darkModeToolStripMenuItem.Checked, out System.Drawing.Color background, out System.Drawing.Color surface, out System.Drawing.Color foreground);
+                    ApplyThemeToControlTree(progressForm, background, surface, foreground, darkModeToolStripMenuItem.Checked);
+                    progressForm.Show(this);
+                    progressForm.Refresh();
+
+                    int exportedCount = 0;
+                    int failedCount = 0;
+                    bool cancelled = false;
+
+                    for (int i = 0; i < mapFiles.Length; i++)
+                    {
+                        if (cancelRequested)
+                        {
+                            cancelled = true;
+                            break;
+                        }
+
+                        string filePath = mapFiles[i];
+                        statusLabel.Text = $"Exporting {i + 1}/{mapFiles.Length}: {Path.GetFileName(filePath)}";
+                        progressBar.Value = i + 1;
+                        progressForm.Refresh();
+                        Application.DoEvents();
+
+                        if (cancelRequested)
+                        {
+                            cancelled = true;
+                            break;
+                        }
+
+                        try
+                        {
+                            LoadChunkBitmaps(filePath, out Bitmap firstChunk, out Bitmap secondChunk);
+                            string fileBase = Path.GetFileNameWithoutExtension(filePath);
+
+                            using (firstChunk)
+                                firstChunk.Save(Path.Combine(exportFolder, $"{fileBase}_chunk1.{exportExtension}"), exportImageFormat);
+
+                            if (secondChunk != null)
+                                using (secondChunk)
+                                    secondChunk.Save(Path.Combine(exportFolder, $"{fileBase}_chunk2.{exportExtension}"), exportImageFormat);
+
+                            exportedCount++;
+                        }
+                        catch
+                        {
+                            failedCount++;
+                        }
+                    }
+
+                    progressForm.Close();
+                    if (cancelled)
+                    {
+                        ShowAppMessage(
+                            $"Mass export cancelled.\n\nExported: {exportedCount}\nFailed: {failedCount}\nOutput folder: {exportFolder}",
+                            "Mass export",
+                            MessageBoxIcon.Warning);
+                    }
+                    else
+                    {
+                        ShowAppMessage(
+                            $"Mass export completed.\n\nExported: {exportedCount}\nFailed: {failedCount}\nOutput folder: {exportFolder}",
+                            "Mass export",
+                            failedCount == 0 ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
+                    }
+            }
         }
     }
 }

@@ -91,7 +91,7 @@
             // 
             this.browseAndMassExportToolStripMenuItem.Name = "browseAndMassExportToolStripMenuItem";
             this.browseAndMassExportToolStripMenuItem.Size = new System.Drawing.Size(146, 20);
-            this.browseAndMassExportToolStripMenuItem.Text = "Browse and mass export";
+            this.browseAndMassExportToolStripMenuItem.Text = "Mass Export";
             this.browseAndMassExportToolStripMenuItem.Click += new System.EventHandler(this.browseAndMassExportToolStripMenuItem_Click);
             // 
             // darkModeToolStripMenuItem
