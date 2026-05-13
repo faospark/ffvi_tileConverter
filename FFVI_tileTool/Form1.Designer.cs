@@ -30,6 +30,9 @@
         {
             this.menuStrip1 = new System.Windows.Forms.MenuStrip();
             this.browseToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.browseOpenToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.browseRecentSeparatorToolStripMenuItem = new System.Windows.Forms.ToolStripSeparator();
+            this.browseRecentNoneToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.createBackupToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.browseAndMassExportToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.filtersToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -97,10 +100,33 @@
             // 
             // browseToolStripMenuItem
             // 
+            this.browseToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.browseOpenToolStripMenuItem,
+            this.browseRecentSeparatorToolStripMenuItem,
+            this.browseRecentNoneToolStripMenuItem});
             this.browseToolStripMenuItem.Name = "browseToolStripMenuItem";
-            this.browseToolStripMenuItem.Size = new System.Drawing.Size(66, 20);
-            this.browseToolStripMenuItem.Text = "Browse...";
-            this.browseToolStripMenuItem.Click += new System.EventHandler(this.browseToolStripMenuItem_Click);
+            this.browseToolStripMenuItem.Size = new System.Drawing.Size(56, 20);
+            this.browseToolStripMenuItem.Text = "Browse";
+            this.browseToolStripMenuItem.DropDownOpening += new System.EventHandler(this.browseToolStripMenuItem_DropDownOpening);
+            // 
+            // browseOpenToolStripMenuItem
+            // 
+            this.browseOpenToolStripMenuItem.Name = "browseOpenToolStripMenuItem";
+            this.browseOpenToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.browseOpenToolStripMenuItem.Text = "Open...";
+            this.browseOpenToolStripMenuItem.Click += new System.EventHandler(this.browseToolStripMenuItem_Click);
+            // 
+            // browseRecentSeparatorToolStripMenuItem
+            // 
+            this.browseRecentSeparatorToolStripMenuItem.Name = "browseRecentSeparatorToolStripMenuItem";
+            this.browseRecentSeparatorToolStripMenuItem.Size = new System.Drawing.Size(177, 6);
+            // 
+            // browseRecentNoneToolStripMenuItem
+            // 
+            this.browseRecentNoneToolStripMenuItem.Enabled = false;
+            this.browseRecentNoneToolStripMenuItem.Name = "browseRecentNoneToolStripMenuItem";
+            this.browseRecentNoneToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.browseRecentNoneToolStripMenuItem.Text = "No recent directories";
             // 
             // createBackupToolStripMenuItem
             // 
@@ -426,6 +452,9 @@
 
         private System.Windows.Forms.MenuStrip menuStrip1;
         private System.Windows.Forms.ToolStripMenuItem browseToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem browseOpenToolStripMenuItem;
+        private System.Windows.Forms.ToolStripSeparator browseRecentSeparatorToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem browseRecentNoneToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem createBackupToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem filtersToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem filterOffToolStripMenuItem;

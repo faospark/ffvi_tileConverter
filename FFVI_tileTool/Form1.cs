@@ -35,9 +35,11 @@ namespace FFVI_tileTool
         private const int DwmwaUseImmersiveDarkMode = 20;
         private const int DwmwaUseImmersiveDarkModeBefore20H1 = 19;
         private const string LastOpenedFileStateName = "last-opened-map.txt";
+        private const string RecentDirectoriesStateName = "recent-map-directories.txt";
         private const string DarkModeStateName = "dark-mode.txt";
         private const string BackupReminderStateName = "backup-reminder-shown.txt";
         private const string DefaultWindowTitle = "FFVI tile tool";
+        private const int MaxRecentDirectories = 8;
 
         private static readonly HashSet<string> SnowTileMaps = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
@@ -62,6 +64,7 @@ namespace FFVI_tileTool
 
         string[] st;
         private string[] allMapFiles = new string[0];
+        private List<string> recentDirectories = new List<string>();
         private MapCategoryFilter activeMapFilter = MapCategoryFilter.Off;
         private bool backupReminderHandledSession;
         public Form1()
@@ -73,6 +76,9 @@ namespace FFVI_tileTool
             bool darkModeEnabled = LoadDarkModeState();
             darkModeToolStripMenuItem.Checked = darkModeEnabled;
             ApplyTheme(darkModeEnabled);
+
+            recentDirectories = LoadRecentDirectories();
+            RefreshRecentDirectoriesMenu();
 
             RestoreLastOpenedFile();
         }
@@ -120,6 +126,47 @@ namespace FFVI_tileTool
             }
 
             SaveLastOpenedFile(selectedFile);
+            AddRecentDirectory(selectedFolder);
+        }
+
+        private void browseToolStripMenuItem_DropDownOpening(object sender, EventArgs e)
+        {
+            RefreshRecentDirectoriesMenu();
+        }
+
+        private void recentDirectoryToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (!(sender is ToolStripMenuItem menuItem)) return;
+
+            string folderPath = menuItem.Tag as string;
+            if (string.IsNullOrWhiteSpace(folderPath) || !Directory.Exists(folderPath))
+            {
+                ShowAppMessage("Directory is no longer available.", "Recent directories", MessageBoxIcon.Warning);
+                recentDirectories.RemoveAll(x => string.Equals(x, folderPath, StringComparison.OrdinalIgnoreCase));
+                SaveRecentDirectories(recentDirectories);
+                RefreshRecentDirectoriesMenu();
+                return;
+            }
+
+            string fileToSelect = null;
+            string lastOpenedFile = LoadLastOpenedFile();
+            if (!string.IsNullOrWhiteSpace(lastOpenedFile) && File.Exists(lastOpenedFile) &&
+                string.Equals(Path.GetDirectoryName(lastOpenedFile), folderPath, StringComparison.OrdinalIgnoreCase))
+                fileToSelect = lastOpenedFile;
+
+            LoadMapFilesFromFolder(folderPath, fileToSelect);
+
+            if (!EnsureMapBinFilesOrOfferDecompression(folderPath))
+            {
+                ShowAppMessage("No map*.bin files found in the selected folder.", "Recent directories", MessageBoxIcon.Warning);
+                return;
+            }
+
+            string selectedMapPath = GetSelectedMapFilePath();
+            if (!string.IsNullOrWhiteSpace(selectedMapPath))
+                SaveLastOpenedFile(selectedMapPath);
+
+            AddRecentDirectory(folderPath);
         }
 
         private void listBox1_SelectedIndexChanged(object sender, EventArgs e)
@@ -654,6 +701,11 @@ namespace FFVI_tileTool
             return Path.Combine(Application.UserAppDataPath, LastOpenedFileStateName);
         }
 
+        private string GetRecentDirectoriesStateFilePath()
+        {
+            return Path.Combine(Application.UserAppDataPath, RecentDirectoriesStateName);
+        }
+
         private string GetDarkModeStateFilePath()
         {
             return Path.Combine(Application.UserAppDataPath, DarkModeStateName);
@@ -662,6 +714,99 @@ namespace FFVI_tileTool
         private string GetBackupReminderStateFilePath()
         {
             return Path.Combine(Application.UserAppDataPath, BackupReminderStateName);
+        }
+
+        private List<string> LoadRecentDirectories()
+        {
+            try
+            {
+                string stateFilePath = GetRecentDirectoriesStateFilePath();
+                if (!File.Exists(stateFilePath)) return new List<string>();
+
+                return File.ReadAllLines(stateFilePath)
+                    .Select(x => x.Trim())
+                    .Where(x => !string.IsNullOrWhiteSpace(x))
+                    .Where(Directory.Exists)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .Take(MaxRecentDirectories)
+                    .ToList();
+            }
+            catch
+            {
+                return new List<string>();
+            }
+        }
+
+        private void SaveRecentDirectories(List<string> directories)
+        {
+            try
+            {
+                Directory.CreateDirectory(Application.UserAppDataPath);
+                File.WriteAllLines(GetRecentDirectoriesStateFilePath(), directories.Take(MaxRecentDirectories));
+            }
+            catch
+            {
+                // Non-fatal: app should still work if state can't be persisted.
+            }
+        }
+
+        private void AddRecentDirectory(string directory)
+        {
+            if (string.IsNullOrWhiteSpace(directory) || !Directory.Exists(directory)) return;
+
+            recentDirectories.RemoveAll(x => string.Equals(x, directory, StringComparison.OrdinalIgnoreCase));
+            recentDirectories.Insert(0, directory);
+            if (recentDirectories.Count > MaxRecentDirectories)
+                recentDirectories = recentDirectories.Take(MaxRecentDirectories).ToList();
+
+            SaveRecentDirectories(recentDirectories);
+            RefreshRecentDirectoriesMenu();
+        }
+
+        private void RefreshRecentDirectoriesMenu()
+        {
+            if (browseToolStripMenuItem == null || browseOpenToolStripMenuItem == null ||
+                browseRecentSeparatorToolStripMenuItem == null || browseRecentNoneToolStripMenuItem == null)
+                return;
+
+            List<ToolStripItem> dynamicRecentItems = browseToolStripMenuItem.DropDownItems
+                .Cast<ToolStripItem>()
+                .Where(item => item.Tag is string)
+                .ToList();
+
+            foreach (ToolStripItem item in dynamicRecentItems)
+                browseToolStripMenuItem.DropDownItems.Remove(item);
+
+            recentDirectories = recentDirectories
+                .Where(Directory.Exists)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Take(MaxRecentDirectories)
+                .ToList();
+
+            if (recentDirectories.Count == 0)
+            {
+                browseRecentSeparatorToolStripMenuItem.Visible = true;
+                browseRecentNoneToolStripMenuItem.Visible = true;
+                browseRecentNoneToolStripMenuItem.Enabled = false;
+                return;
+            }
+
+            browseRecentSeparatorToolStripMenuItem.Visible = true;
+            browseRecentNoneToolStripMenuItem.Visible = false;
+
+            int insertIndex = browseToolStripMenuItem.DropDownItems.IndexOf(browseRecentNoneToolStripMenuItem) + 1;
+            for (int i = 0; i < recentDirectories.Count; i++)
+            {
+                string directory = recentDirectories[i];
+                ToolStripMenuItem recentItem = new ToolStripMenuItem();
+                recentItem.Text = $"{i + 1}. {directory}";
+                recentItem.Tag = directory;
+                recentItem.Click += recentDirectoryToolStripMenuItem_Click;
+                browseToolStripMenuItem.DropDownItems.Insert(insertIndex + i, recentItem);
+            }
+
+            GetThemeColors(darkModeToolStripMenuItem.Checked, out System.Drawing.Color background, out System.Drawing.Color surface, out System.Drawing.Color foreground);
+            ApplyThemeToMenu(menuStrip1, surface, foreground);
         }
 
         private bool HasShownBackupReminder()
