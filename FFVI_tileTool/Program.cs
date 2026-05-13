@@ -31,17 +31,30 @@ namespace FFVI_tileTool
 
             if (args.Length == 0)
             {
-            Application.EnableVisualStyles();
-            Application.Run(new Form1());
+                LaunchGui();
                 return;
-                }
+            }
+
+            string inputPath = args[0];
+            if (string.IsNullOrWhiteSpace(inputPath) || !Directory.Exists(inputPath))
+            {
+                LaunchGui();
+                return;
+            }
+
+            if (!inputPath.Contains("map\\convertedTiles"))
+            {
+                // Legacy export CLI mode is incomplete. Prefer launching GUI instead of failing silently.
+                LaunchGui();
+                return;
+            }
 
             //fallback to old algorithm
 
-            if (args[0].Contains("map\\convertedTiles"))
+            if (inputPath.Contains("map\\convertedTiles"))
             #region IMPORT
             {
-                string[] files = Directory.GetFiles(args[0], "map*.bin.png");
+                string[] files = Directory.GetFiles(inputPath, "map*.bin.png");
                 foreach(string file in files)
                 {
                     Bitmap bmp = new Bitmap(file);
@@ -99,6 +112,13 @@ namespace FFVI_tileTool
                 }
             }
             #endregion
+        }
+
+        private static void LaunchGui()
+        {
+            Application.EnableVisualStyles();
+            Application.SetCompatibleTextRenderingDefault(false);
+            Application.Run(new Form1());
         }
 
         private static byte[] BuildPalette(Bitmap bmp)
