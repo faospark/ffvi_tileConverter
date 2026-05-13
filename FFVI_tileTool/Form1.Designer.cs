@@ -60,9 +60,11 @@
             this.groupBox1 = new System.Windows.Forms.GroupBox();
             this.button2 = new System.Windows.Forms.Button();
             this.button1 = new System.Windows.Forms.Button();
+            this.buttonChunk1PaletteInfo = new System.Windows.Forms.Button();
             this.groupBox2 = new System.Windows.Forms.GroupBox();
             this.button3 = new System.Windows.Forms.Button();
             this.button4 = new System.Windows.Forms.Button();
+            this.buttonChunk2PaletteInfo = new System.Windows.Forms.Button();
             this.menuStrip1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
             this.splitContainer1.Panel1.SuspendLayout();
@@ -281,7 +283,7 @@
             // 
             this.splitContainer2.Panel2.Controls.Add(this.flowLayoutPanel1);
             this.splitContainer2.Size = new System.Drawing.Size(1094, 646);
-            this.splitContainer2.SplitterDistance = 548;
+            this.splitContainer2.SplitterDistance = 520;
             this.splitContainer2.TabIndex = 0;
             // 
             // groupBox4
@@ -292,7 +294,7 @@
             this.groupBox4.Size = new System.Drawing.Size(547, 548);
             this.groupBox4.TabIndex = 1;
             this.groupBox4.TabStop = false;
-            this.groupBox4.Text = "Second chunk Image";
+            this.groupBox4.Text = "Second section Image";
             // 
             // panel2
             // 
@@ -320,7 +322,7 @@
             this.groupBox3.Size = new System.Drawing.Size(547, 548);
             this.groupBox3.TabIndex = 0;
             this.groupBox3.TabStop = false;
-            this.groupBox3.Text = "First chunk Image";
+            this.groupBox3.Text = "First section Image";
             // 
             // panel1
             // 
@@ -348,25 +350,26 @@
             this.flowLayoutPanel1.Dock = System.Windows.Forms.DockStyle.Fill;
             this.flowLayoutPanel1.Location = new System.Drawing.Point(0, 0);
             this.flowLayoutPanel1.Name = "flowLayoutPanel1";
-            this.flowLayoutPanel1.Size = new System.Drawing.Size(570, 74);
+            this.flowLayoutPanel1.Size = new System.Drawing.Size(570, 102);
             this.flowLayoutPanel1.TabIndex = 0;
             // 
             // groupBox1
             // 
+            this.groupBox1.Controls.Add(this.buttonChunk1PaletteInfo);
             this.groupBox1.Controls.Add(this.button2);
             this.groupBox1.Controls.Add(this.button1);
             this.groupBox1.Location = new System.Drawing.Point(3, 3);
             this.groupBox1.Name = "groupBox1";
-            this.groupBox1.Size = new System.Drawing.Size(279, 50);
+            this.groupBox1.Size = new System.Drawing.Size(564, 50);
             this.groupBox1.TabIndex = 2;
             this.groupBox1.TabStop = false;
-            this.groupBox1.Text = "I/O controls";
+            this.groupBox1.Text = "I/O controls section 1";
             // 
             // button2
             // 
-            this.button2.Location = new System.Drawing.Point(111, 19);
+            this.button2.Location = new System.Drawing.Point(192, 19);
             this.button2.Name = "button2";
-            this.button2.Size = new System.Drawing.Size(108, 23);
+            this.button2.Size = new System.Drawing.Size(180, 23);
             this.button2.TabIndex = 1;
             this.button2.Text = "Import image";
             this.button2.UseVisualStyleBackColor = true;
@@ -376,28 +379,39 @@
             // 
             this.button1.Location = new System.Drawing.Point(6, 19);
             this.button1.Name = "button1";
-            this.button1.Size = new System.Drawing.Size(99, 23);
+            this.button1.Size = new System.Drawing.Size(180, 23);
             this.button1.TabIndex = 0;
             this.button1.Text = "Export image";
             this.button1.UseVisualStyleBackColor = true;
             this.button1.Click += new System.EventHandler(this.button1_Click);
             // 
+            // buttonChunk1PaletteInfo
+            // 
+            this.buttonChunk1PaletteInfo.Location = new System.Drawing.Point(378, 19);
+            this.buttonChunk1PaletteInfo.Name = "buttonChunk1PaletteInfo";
+            this.buttonChunk1PaletteInfo.Size = new System.Drawing.Size(180, 23);
+            this.buttonChunk1PaletteInfo.TabIndex = 2;
+            this.buttonChunk1PaletteInfo.Text = "Palette info: n/a";
+            this.buttonChunk1PaletteInfo.UseVisualStyleBackColor = true;
+            this.buttonChunk1PaletteInfo.Click += new System.EventHandler(this.buttonChunk1PaletteInfo_Click);
+            // 
             // groupBox2
             // 
+            this.groupBox2.Controls.Add(this.buttonChunk2PaletteInfo);
             this.groupBox2.Controls.Add(this.button3);
             this.groupBox2.Controls.Add(this.button4);
-            this.groupBox2.Location = new System.Drawing.Point(288, 3);
+            this.groupBox2.Location = new System.Drawing.Point(3, 59);
             this.groupBox2.Name = "groupBox2";
-            this.groupBox2.Size = new System.Drawing.Size(273, 50);
+            this.groupBox2.Size = new System.Drawing.Size(564, 50);
             this.groupBox2.TabIndex = 3;
             this.groupBox2.TabStop = false;
-            this.groupBox2.Text = "I/O controls";
+            this.groupBox2.Text = "I/O controls section 2";
             // 
             // button3
             // 
-            this.button3.Location = new System.Drawing.Point(109, 19);
+            this.button3.Location = new System.Drawing.Point(192, 19);
             this.button3.Name = "button3";
-            this.button3.Size = new System.Drawing.Size(109, 23);
+            this.button3.Size = new System.Drawing.Size(180, 23);
             this.button3.TabIndex = 1;
             this.button3.Text = "Import image";
             this.button3.UseVisualStyleBackColor = true;
@@ -407,11 +421,21 @@
             // 
             this.button4.Location = new System.Drawing.Point(6, 19);
             this.button4.Name = "button4";
-            this.button4.Size = new System.Drawing.Size(97, 23);
+            this.button4.Size = new System.Drawing.Size(180, 23);
             this.button4.TabIndex = 0;
             this.button4.Text = "Export image";
             this.button4.UseVisualStyleBackColor = true;
             this.button4.Click += new System.EventHandler(this.button4_Click);
+            // 
+            // buttonChunk2PaletteInfo
+            // 
+            this.buttonChunk2PaletteInfo.Location = new System.Drawing.Point(378, 19);
+            this.buttonChunk2PaletteInfo.Name = "buttonChunk2PaletteInfo";
+            this.buttonChunk2PaletteInfo.Size = new System.Drawing.Size(180, 23);
+            this.buttonChunk2PaletteInfo.TabIndex = 2;
+            this.buttonChunk2PaletteInfo.Text = "Palette info: n/a";
+            this.buttonChunk2PaletteInfo.UseVisualStyleBackColor = true;
+            this.buttonChunk2PaletteInfo.Click += new System.EventHandler(this.buttonChunk2PaletteInfo_Click);
             // 
             // Form1
             // 
@@ -485,5 +509,7 @@
         private System.Windows.Forms.PictureBox pictureBox1;
         private System.Windows.Forms.Panel panel1;
         private System.Windows.Forms.Panel panel2;
+        private System.Windows.Forms.Button buttonChunk1PaletteInfo;
+        private System.Windows.Forms.Button buttonChunk2PaletteInfo;
     }
 }

@@ -13,6 +13,7 @@ namespace FFVI_tileTool
             isDarkMode = darkMode;
             InitializeComponent();
             ApplyTheme();
+            Form1.ApplyTitleBarThemeToForm(this, isDarkMode);
         }
 
         private void InitializeComponent()

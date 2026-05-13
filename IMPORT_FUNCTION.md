@@ -55,15 +55,16 @@ Palette entries are stored in this order per color:
 - `R`
 - inverted alpha (`255 - A`)
 
-In addition, import now enforces the game transparency key color:
+When importing an edited PNG, the app performs a **complete replacement**:
 
-- key color is `05 05 05` (hex `050505`)
-- importer ensures this color exists in the output palette
-- any source pixel that is transparent (palette alpha `< 128`) or already `050505` is remapped to the key-color palette index
+- **Pixel data**: The edited PNG's pixel indices are written directly to the bin (no remapping)
+- **Palette data**: The edited PNG's palette replaces the bin's palette completely
+
+The edited PNG becomes the source of truth. All pixel indices and palette entries from the PNG are copied as-is to the bin, preserving any edits to both color order and pixel structure.
 
 So importing updates both:
 
-- indexed pixel data
+- indexed pixel data (from the edited PNG)
 - palette data used by that chunk
 
 ## Safety Note

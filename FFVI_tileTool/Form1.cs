@@ -65,6 +65,10 @@ namespace FFVI_tileTool
         string[] st;
         private string[] allMapFiles = new string[0];
         private List<string> recentDirectories = new List<string>();
+        private List<int> currentChunk1PaletteOffsets = new List<int>();
+        private List<int> currentChunk2PaletteOffsets = new List<int>();
+        private byte[] currentChunk1Palette = new byte[1024];
+        private byte[] currentChunk2Palette = new byte[1024];
         private MapCategoryFilter activeMapFilter = MapCategoryFilter.Off;
         private bool backupReminderHandledSession;
         public Form1()
@@ -394,6 +398,7 @@ namespace FFVI_tileTool
 
                 GetThemeColors(darkMode, out System.Drawing.Color background, out System.Drawing.Color surface, out System.Drawing.Color foreground);
                 ApplyThemeToControlTree(dialog, background, surface, foreground, darkMode);
+                ApplyTitleBarThemeToForm(dialog, darkMode);
 
                 DialogResult result = dialog.ShowDialog(this);
                 if (result == DialogResult.Yes) return IsolateDestinationChoice.NewFolder;
@@ -472,6 +477,7 @@ namespace FFVI_tileTool
 
                 GetThemeColors(darkMode, out System.Drawing.Color background, out System.Drawing.Color surface, out System.Drawing.Color foreground);
                 ApplyThemeToControlTree(dialog, background, surface, foreground, darkMode);
+                ApplyTitleBarThemeToForm(dialog, darkMode);
 
                 if (dialog.ShowDialog(this) != DialogResult.OK)
                     return null;
@@ -1007,6 +1013,16 @@ namespace FFVI_tileTool
                 DwmSetWindowAttribute(Handle, DwmwaUseImmersiveDarkModeBefore20H1, ref useDarkMode, sizeof(int));
         }
 
+        public static void ApplyTitleBarThemeToForm(Form form, bool darkMode)
+        {
+            if (!form.IsHandleCreated) return;
+
+            int useDarkMode = darkMode ? 1 : 0;
+            int result = DwmSetWindowAttribute(form.Handle, DwmwaUseImmersiveDarkMode, ref useDarkMode, sizeof(int));
+            if (result != 0)
+                DwmSetWindowAttribute(form.Handle, DwmwaUseImmersiveDarkModeBefore20H1, ref useDarkMode, sizeof(int));
+        }
+
         private void GetThemeColors(bool darkMode, out System.Drawing.Color background, out System.Drawing.Color surface, out System.Drawing.Color foreground)
         {
             background = darkMode ? System.Drawing.Color.FromArgb(30, 30, 30) : SystemColors.Control;
@@ -1052,6 +1068,7 @@ namespace FFVI_tileTool
 
                 GetThemeColors(darkMode, out System.Drawing.Color background, out System.Drawing.Color surface, out System.Drawing.Color foreground);
                 ApplyThemeToControlTree(dialog, background, surface, foreground, darkMode);
+                ApplyTitleBarThemeToForm(dialog, darkMode);
 
                 return dialog.ShowDialog(this);
             }
@@ -1109,6 +1126,7 @@ namespace FFVI_tileTool
 
                 GetThemeColors(darkMode, out System.Drawing.Color background, out System.Drawing.Color surface, out System.Drawing.Color foreground);
                 ApplyThemeToControlTree(dialog, background, surface, foreground, darkMode);
+                ApplyTitleBarThemeToForm(dialog, darkMode);
 
                 return dialog.ShowDialog(this);
             }
@@ -1160,6 +1178,7 @@ namespace FFVI_tileTool
 
                 GetThemeColors(darkMode, out System.Drawing.Color background, out System.Drawing.Color surface, out System.Drawing.Color foreground);
                 ApplyThemeToControlTree(dialog, background, surface, foreground, darkMode);
+                ApplyTitleBarThemeToForm(dialog, darkMode);
 
                 return dialog.ShowDialog(this) == DialogResult.OK;
             }
@@ -1215,6 +1234,7 @@ namespace FFVI_tileTool
 
                 GetThemeColors(darkMode, out System.Drawing.Color background, out System.Drawing.Color surface, out System.Drawing.Color foreground);
                 ApplyThemeToControlTree(dialog, background, surface, foreground, darkMode);
+                ApplyTitleBarThemeToForm(dialog, darkMode);
 
                 DialogResult result = dialog.ShowDialog(this);
                 if (result != DialogResult.OK) return null;
@@ -1413,6 +1433,7 @@ namespace FFVI_tileTool
             Bitmap oldSecond = pictureBox2.Image as Bitmap;
 
             LoadChunkBitmaps(file, out Bitmap firstChunk, out Bitmap secondChunk);
+            UpdatePaletteInfo(file);
 
             pictureBox1.Size = firstChunk.Size;
             pictureBox1.Image = firstChunk;
@@ -1482,7 +1503,7 @@ namespace FFVI_tileTool
             }
             if(bmp.Height != 512 || bmp.Width != 512)
             {
-                ShowAppMessage($"Chunk 1 is always 512x512. You are trying to import {bmp.Width}x{bmp.Height}.", "Import warning", MessageBoxIcon.Warning);
+                ShowAppMessage($"Section 1 is always 512x512. You are trying to import {bmp.Width}x{bmp.Height}.", "Import warning", MessageBoxIcon.Warning);
                 return;
             }
             BuildGameImportData(bmp, out byte[] palBuffer, out byte[] pixelBuffer);
@@ -1492,8 +1513,12 @@ namespace FFVI_tileTool
 
             string filePath = st.Where(x => Path.GetFileName(x) == (string)listBox1.SelectedValue).First();
             byte[] bb = File.ReadAllBytes(filePath);
+            byte[] originalPalette = ReadPaletteBlock(bb, 0);
+            int chunk2PaletteOffset = GetChunk2PaletteOffset(bb.Length);
+            int chunk1SearchEnd = chunk2PaletteOffset >= 0 ? chunk2PaletteOffset : bb.Length;
+            List<int> chunk1PaletteOffsets = FindPaletteOffsetsInRange(bb, originalPalette, 0, chunk1SearchEnd);
             Buffer.BlockCopy(b, 0, bb, 0, b.Length);
-            MirrorChunk1PaletteBanks(bb, palBuffer);
+            ApplyPaletteAtOffsets(bb, chunk1PaletteOffsets, palBuffer);
             File.WriteAllBytes(filePath, bb);
             RenderImage(filePath);
         }
@@ -1515,14 +1540,14 @@ namespace FFVI_tileTool
             }
             if (bmp.Width != 512)
             {
-                ShowAppMessage($"Chunk 2 is always 512 pixels wide. You are trying to import {bmp.Width}x{bmp.Height}.", "Import warning", MessageBoxIcon.Warning);
+                ShowAppMessage($"Section 2 is always 512 pixels wide. You are trying to import {bmp.Width}x{bmp.Height}.", "Import warning", MessageBoxIcon.Warning);
                 return;
             }
             BuildGameImportData(bmp, out byte[] palBuffer, out byte[] pixelBuffer);
             byte[] b = new byte[512 * bmp.Height + 1024];
             Buffer.BlockCopy(palBuffer, 0, b, 0, 1024);
             Buffer.BlockCopy(pixelBuffer, 0, b, 1024, 512 * bmp.Height);
-
+            
             string filePath = st.Where(x => Path.GetFileName(x) == (string)listBox1.SelectedValue).First();
             byte[] bb = File.ReadAllBytes(filePath);
             //if(bb.Length < 512*512+1024+b.Length + 512*24)
@@ -1577,21 +1602,136 @@ namespace FFVI_tileTool
             }
         }
 
-        private static void MirrorChunk1PaletteBanks(byte[] fileBuffer, byte[] paletteBuffer)
+        private static byte[] ReadPaletteBlock(byte[] fileBuffer, int offset)
         {
-            int[] paletteBankOffsets = new int[]
-            {
-                0x40400, 0x40800, 0x40C00, 0x41000,
-                0x41400, 0x41800, 0x41C00, 0x42000,
-                0x42400, 0x42800, 0x42C00, 0x43000,
-                0x43400, 0x43800, 0x43C00, 0x44000
-            };
+            byte[] paletteBuffer = new byte[1024];
+            if (fileBuffer != null && offset >= 0 && offset + 1024 <= fileBuffer.Length)
+                Buffer.BlockCopy(fileBuffer, offset, paletteBuffer, 0, 1024);
 
-            foreach (int offset in paletteBankOffsets)
+            return paletteBuffer;
+        }
+
+        private static int GetChunk2PaletteOffset(int fileLength)
+        {
+            int offset = fileLength - 0x80400;
+            return offset >= 0 ? offset : -1;
+        }
+
+        private static List<int> FindPaletteOffsets(byte[] fileBuffer, byte[] paletteBuffer)
+        {
+            return FindPaletteOffsetsInRange(fileBuffer, paletteBuffer, 0, fileBuffer != null ? fileBuffer.Length : 0);
+        }
+
+        private static List<int> FindPaletteOffsetsInRange(byte[] fileBuffer, byte[] paletteBuffer, int startOffset, int endOffsetExclusive)
+        {
+            List<int> offsets = new List<int>();
+            if (fileBuffer == null || paletteBuffer == null || paletteBuffer.Length < 1024 || fileBuffer.Length < 1024)
+                return offsets;
+
+            int start = Math.Max(0, startOffset);
+            int endExclusive = Math.Min(fileBuffer.Length, endOffsetExclusive);
+            int maxOffset = endExclusive - 1024;
+            if (start > maxOffset)
+                return offsets;
+
+            for (int offset = start; offset <= maxOffset; offset++)
             {
-                if (offset < 0 || offset + 1024 > fileBuffer.Length) continue;
-                Buffer.BlockCopy(paletteBuffer, 0, fileBuffer, offset, 1024);
+                bool same = true;
+                for (int i = 0; i < 1024; i++)
+                {
+                    if (fileBuffer[offset + i] != paletteBuffer[i])
+                    {
+                        same = false;
+                        break;
+                    }
+                }
+
+                if (same)
+                    offsets.Add(offset);
             }
+
+            return offsets;
+        }
+
+        private static void ApplyPaletteAtOffsets(byte[] fileBuffer, IEnumerable<int> offsets, byte[] newPalette)
+        {
+            if (fileBuffer == null || offsets == null || newPalette == null || newPalette.Length < 1024)
+                return;
+
+            foreach (int offset in offsets)
+            {
+                if (offset < 0 || offset + 1024 > fileBuffer.Length)
+                    continue;
+
+                Buffer.BlockCopy(newPalette, 0, fileBuffer, offset, 1024);
+            }
+        }
+
+        private void UpdatePaletteInfo(string filePath)
+        {
+            if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
+            {
+                buttonChunk1PaletteInfo.Text = "Palette info: n/a";
+                buttonChunk2PaletteInfo.Text = "Palette info: n/a";
+                currentChunk1PaletteOffsets = new List<int>();
+                currentChunk2PaletteOffsets = new List<int>();
+                currentChunk1Palette = new byte[1024];
+                currentChunk2Palette = new byte[1024];
+                return;
+            }
+
+            byte[] fileBuffer = File.ReadAllBytes(filePath);
+            if (fileBuffer.Length < 1024)
+            {
+                buttonChunk1PaletteInfo.Text = "Palette info: n/a";
+                buttonChunk2PaletteInfo.Text = "Palette info: n/a";
+                currentChunk1PaletteOffsets = new List<int>();
+                currentChunk2PaletteOffsets = new List<int>();
+                currentChunk1Palette = new byte[1024];
+                currentChunk2Palette = new byte[1024];
+                return;
+            }
+
+            byte[] chunk1Palette = ReadPaletteBlock(fileBuffer, 0);
+            int chunk2PaletteOffset = GetChunk2PaletteOffset(fileBuffer.Length);
+            byte[] chunk2Palette = chunk2PaletteOffset >= 0 ? ReadPaletteBlock(fileBuffer, chunk2PaletteOffset) : new byte[1024];
+
+            currentChunk1Palette = chunk1Palette;
+            currentChunk2Palette = chunk2Palette;
+
+            int chunk1SearchEnd = chunk2PaletteOffset >= 0 ? chunk2PaletteOffset : fileBuffer.Length;
+            currentChunk1PaletteOffsets = FindPaletteOffsetsInRange(fileBuffer, chunk1Palette, 0, chunk1SearchEnd);
+            currentChunk2PaletteOffsets = chunk2PaletteOffset >= 0 ? new List<int> { chunk2PaletteOffset } : new List<int>();
+
+            buttonChunk1PaletteInfo.Text = $"Palette info ({currentChunk1PaletteOffsets.Count})";
+            buttonChunk2PaletteInfo.Text = chunk2PaletteOffset >= 0
+                ? $"Palette 0x{chunk2PaletteOffset:X6}"
+                : "Palette info: n/a";
+        }
+
+        private void ShowPaletteOffsets(string title, List<int> offsets, byte[] palette)
+        {
+            if (offsets == null || offsets.Count == 0)
+            {
+                ShowAppMessage("No matching palette offsets were found.", title, MessageBoxIcon.Information);
+                return;
+            }
+
+            bool darkMode = darkModeToolStripMenuItem.Checked;
+            using (PaletteInfoDialog dialog = new PaletteInfoDialog(title, offsets, palette, darkMode))
+            {
+                dialog.ShowDialog(this);
+            }
+        }
+
+        private void buttonChunk1PaletteInfo_Click(object sender, EventArgs e)
+        {
+            ShowPaletteOffsets("Section 1 palette offsets", currentChunk1PaletteOffsets, currentChunk1Palette);
+        }
+
+        private void buttonChunk2PaletteInfo_Click(object sender, EventArgs e)
+        {
+            ShowPaletteOffsets("Section 2 palette offsets", currentChunk2PaletteOffsets, currentChunk2Palette);
         }
 
         private void browseAndMassExportToolStripMenuItem_Click(object sender, EventArgs e)
