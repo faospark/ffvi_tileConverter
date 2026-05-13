@@ -1580,6 +1580,106 @@ namespace FFVI_tileTool
             RenderImage(filePath);
         }
 
+        private static string FindExistingSectionImagePath(string folderPath, string fileBase, string sectionSuffix)
+        {
+            if (string.IsNullOrWhiteSpace(folderPath) || string.IsNullOrWhiteSpace(fileBase) || string.IsNullOrWhiteSpace(sectionSuffix))
+                return null;
+
+            string png = Path.Combine(folderPath, $"{fileBase}_{sectionSuffix}.png");
+            if (File.Exists(png)) return png;
+
+            string bmp = Path.Combine(folderPath, $"{fileBase}_{sectionSuffix}.bmp");
+            if (File.Exists(bmp)) return bmp;
+
+            return null;
+        }
+
+        private bool TryImportSection1Image(string filePath, string imagePath, out string error)
+        {
+            error = null;
+            Bitmap bmp = null;
+            try
+            {
+                bmp = new Bitmap(imagePath);
+                if (bmp.PixelFormat != PixelFormat.Format8bppIndexed)
+                {
+                    error = "Image is not 8BPP indexed.";
+                    return false;
+                }
+
+                if (bmp.Width != 512 || bmp.Height != 512)
+                {
+                    error = $"Section 1 must be 512x512 (got {bmp.Width}x{bmp.Height}).";
+                    return false;
+                }
+
+                BuildGameImportData(bmp, out byte[] palBuffer, out byte[] pixelBuffer);
+                byte[] sectionBuffer = new byte[512 * 512 + 1024];
+                Buffer.BlockCopy(palBuffer, 0, sectionBuffer, 0, 1024);
+                Buffer.BlockCopy(pixelBuffer, 0, sectionBuffer, 1024, 512 * 512);
+
+                byte[] fileBuffer = File.ReadAllBytes(filePath);
+                byte[] originalPalette = ReadPaletteBlock(fileBuffer, 0);
+                int section2PaletteOffset = GetSection2PaletteOffset(fileBuffer.Length);
+                int section1SearchEnd = section2PaletteOffset >= 0 ? section2PaletteOffset : fileBuffer.Length;
+                List<int> section1PaletteOffsets = FindPaletteOffsetsInRange(fileBuffer, originalPalette, 0, section1SearchEnd);
+
+                Buffer.BlockCopy(sectionBuffer, 0, fileBuffer, 0, sectionBuffer.Length);
+                ApplyPaletteAtOffsets(fileBuffer, section1PaletteOffsets, palBuffer);
+                File.WriteAllBytes(filePath, fileBuffer);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                error = ex.Message;
+                return false;
+            }
+            finally
+            {
+                bmp?.Dispose();
+            }
+        }
+
+        private bool TryImportSection2Image(string filePath, string imagePath, out string error)
+        {
+            error = null;
+            Bitmap bmp = null;
+            try
+            {
+                bmp = new Bitmap(imagePath);
+                if (bmp.PixelFormat != PixelFormat.Format8bppIndexed)
+                {
+                    error = "Image is not 8BPP indexed.";
+                    return false;
+                }
+
+                if (bmp.Width != 512)
+                {
+                    error = $"Section 2 must be 512 pixels wide (got {bmp.Width}x{bmp.Height}).";
+                    return false;
+                }
+
+                BuildGameImportData(bmp, out byte[] palBuffer, out byte[] pixelBuffer);
+                byte[] sectionBuffer = new byte[512 * bmp.Height + 1024];
+                Buffer.BlockCopy(palBuffer, 0, sectionBuffer, 0, 1024);
+                Buffer.BlockCopy(pixelBuffer, 0, sectionBuffer, 1024, 512 * bmp.Height);
+
+                byte[] fileBuffer = File.ReadAllBytes(filePath);
+                Buffer.BlockCopy(sectionBuffer, 0, fileBuffer, fileBuffer.Length - 0x80400, sectionBuffer.Length);
+                File.WriteAllBytes(filePath, fileBuffer);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                error = ex.Message;
+                return false;
+            }
+            finally
+            {
+                bmp?.Dispose();
+            }
+        }
+
         private byte[] PaletteToByte(System.Drawing.Color[] pal)
         {
             throw new Exception("NO");
@@ -1935,6 +2035,191 @@ namespace FFVI_tileTool
                             "Mass export",
                             failedCount == 0 ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
                     }
+            }
+        }
+
+        private void massImportToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            string lastOpenedFile = LoadLastOpenedFile();
+            string initialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+            if (!string.IsNullOrWhiteSpace(lastOpenedFile) && File.Exists(lastOpenedFile))
+                initialDirectory = Path.GetDirectoryName(lastOpenedFile);
+
+            string selectedFile;
+            using (OpenFileDialog fileDialog = new OpenFileDialog()
+            {
+                Title = "Select a file from the target folder for mass import",
+                Filter = "Map files (map*.bin)|map*.bin|All files (*.*)|*.*",
+                CheckFileExists = true,
+                CheckPathExists = true,
+                ValidateNames = true,
+                InitialDirectory = initialDirectory,
+                Multiselect = false
+            })
+            {
+                if (fileDialog.ShowDialog() != DialogResult.OK) return;
+
+                selectedFile = fileDialog.FileName;
+                if (string.IsNullOrWhiteSpace(selectedFile) || !File.Exists(selectedFile)) return;
+            }
+
+            string targetFolder = Path.GetDirectoryName(selectedFile);
+            if (string.IsNullOrWhiteSpace(targetFolder) || !Directory.Exists(targetFolder)) return;
+
+            string[] mapFiles = Directory.GetFiles(targetFolder, "map*.bin", SearchOption.TopDirectoryOnly)
+                .OrderBy(Path.GetFileName)
+                .ToArray();
+
+            if (mapFiles.Length == 0)
+            {
+                ShowAppMessage("No map*.bin files found in the selected folder.", "Mass import", MessageBoxIcon.Warning);
+                return;
+            }
+
+            string defaultImportFolder = Path.Combine(targetFolder, "mass_export");
+            string importFolder;
+            using (FolderBrowserDialog folderDialog = new FolderBrowserDialog())
+            {
+                folderDialog.Description = "Select folder containing *_Section1 / *_Section2 PNG or BMP files";
+                folderDialog.SelectedPath = Directory.Exists(defaultImportFolder) ? defaultImportFolder : targetFolder;
+
+                if (folderDialog.ShowDialog(this) != DialogResult.OK) return;
+                importFolder = folderDialog.SelectedPath;
+            }
+
+            if (string.IsNullOrWhiteSpace(importFolder) || !Directory.Exists(importFolder))
+            {
+                ShowAppMessage("Selected import folder is not valid.", "Mass import", MessageBoxIcon.Warning);
+                return;
+            }
+
+            using (Form progressForm = new Form())
+            using (Label statusLabel = new Label())
+            using (ProgressBar progressBar = new ProgressBar())
+            using (Button cancelButton = new Button())
+            {
+                progressForm.Text = "Mass import in progress";
+                progressForm.FormBorderStyle = FormBorderStyle.FixedDialog;
+                progressForm.StartPosition = FormStartPosition.CenterParent;
+                progressForm.MinimizeBox = false;
+                progressForm.MaximizeBox = false;
+                progressForm.ControlBox = false;
+                progressForm.ClientSize = new Size(560, 120);
+
+                statusLabel.AutoSize = false;
+                statusLabel.TextAlign = ContentAlignment.MiddleLeft;
+                statusLabel.Dock = DockStyle.Top;
+                statusLabel.Height = 56;
+                statusLabel.Text = "Preparing import...";
+
+                progressBar.Dock = DockStyle.Bottom;
+                progressBar.Height = 24;
+                progressBar.Minimum = 0;
+                progressBar.Maximum = mapFiles.Length;
+                progressBar.Value = 0;
+
+                bool cancelRequested = false;
+                cancelButton.Text = "Cancel";
+                cancelButton.Size = new Size(90, 26);
+                cancelButton.Location = new Point(progressForm.ClientSize.Width - cancelButton.Width - 12, 62);
+                cancelButton.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+                cancelButton.Click += (s, evt) =>
+                {
+                    cancelRequested = true;
+                    cancelButton.Enabled = false;
+                    statusLabel.Text = "Cancelling after current file...";
+                };
+
+                progressForm.Controls.Add(statusLabel);
+                progressForm.Controls.Add(cancelButton);
+                progressForm.Controls.Add(progressBar);
+                GetThemeColors(darkModeToolStripMenuItem.Checked, out System.Drawing.Color background, out System.Drawing.Color surface, out System.Drawing.Color foreground);
+                ApplyThemeToControlTree(progressForm, background, surface, foreground, darkModeToolStripMenuItem.Checked);
+                progressForm.Show(this);
+                progressForm.Refresh();
+
+                int importedSection1 = 0;
+                int importedSection2 = 0;
+                int updatedFiles = 0;
+                int skippedFiles = 0;
+                int failedOperations = 0;
+                bool cancelled = false;
+
+                for (int i = 0; i < mapFiles.Length; i++)
+                {
+                    if (cancelRequested)
+                    {
+                        cancelled = true;
+                        break;
+                    }
+
+                    string filePath = mapFiles[i];
+                    string fileBase = Path.GetFileNameWithoutExtension(filePath);
+                    statusLabel.Text = $"Importing {i + 1}/{mapFiles.Length}: {Path.GetFileName(filePath)}";
+                    progressBar.Value = i + 1;
+                    progressForm.Refresh();
+                    Application.DoEvents();
+
+                    string section1Image = FindExistingSectionImagePath(importFolder, fileBase, "Section1");
+                    string section2Image = FindExistingSectionImagePath(importFolder, fileBase, "Section2");
+
+                    if (section1Image == null && section2Image == null)
+                    {
+                        skippedFiles++;
+                        continue;
+                    }
+
+                    bool fileUpdated = false;
+
+                    if (section1Image != null)
+                    {
+                        if (TryImportSection1Image(filePath, section1Image, out string _))
+                        {
+                            importedSection1++;
+                            fileUpdated = true;
+                        }
+                        else
+                        {
+                            failedOperations++;
+                        }
+                    }
+
+                    if (section2Image != null)
+                    {
+                        if (TryImportSection2Image(filePath, section2Image, out string _))
+                        {
+                            importedSection2++;
+                            fileUpdated = true;
+                        }
+                        else
+                        {
+                            failedOperations++;
+                        }
+                    }
+
+                    if (fileUpdated)
+                        updatedFiles++;
+                }
+
+                progressForm.Close();
+
+                string selectedMap = GetSelectedMapFilePath();
+                if (!string.IsNullOrWhiteSpace(selectedMap) && File.Exists(selectedMap))
+                    RenderImage(selectedMap);
+
+                string summary =
+                    $"Mass import {(cancelled ? "cancelled" : "completed")}.\n\n" +
+                    $"Updated files: {updatedFiles}\n" +
+                    $"Imported Section 1: {importedSection1}\n" +
+                    $"Imported Section 2: {importedSection2}\n" +
+                    $"Skipped (no images): {skippedFiles}\n" +
+                    $"Failed operations: {failedOperations}\n" +
+                    $"Import folder: {importFolder}";
+
+                ShowAppMessage(
+                    summary,
+                    "Mass import",
+                    failedOperations == 0 ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
             }
         }
 

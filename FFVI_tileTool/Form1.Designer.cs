@@ -35,6 +35,7 @@ namespace FFVI_tileTool
             this.browseRecentNoneToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.createBackupToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.browseAndMassExportToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.massImportToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.filtersToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.filterOffToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.filterSnowTilesToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -91,6 +92,7 @@ namespace FFVI_tileTool
             this.browseToolStripMenuItem,
             this.createBackupToolStripMenuItem,
             this.browseAndMassExportToolStripMenuItem,
+            this.massImportToolStripMenuItem,
             this.filtersToolStripMenuItem,
             this.darkModeToolStripMenuItem,
             this.aboutToolStripMenuItem});
@@ -143,6 +145,13 @@ namespace FFVI_tileTool
             this.browseAndMassExportToolStripMenuItem.Size = new System.Drawing.Size(146, 20);
             this.browseAndMassExportToolStripMenuItem.Text = "Mass Export";
             this.browseAndMassExportToolStripMenuItem.Click += new System.EventHandler(this.browseAndMassExportToolStripMenuItem_Click);
+            // 
+            // massImportToolStripMenuItem
+            // 
+            this.massImportToolStripMenuItem.Name = "massImportToolStripMenuItem";
+            this.massImportToolStripMenuItem.Size = new System.Drawing.Size(84, 20);
+            this.massImportToolStripMenuItem.Text = "Mass Import";
+            this.massImportToolStripMenuItem.Click += new System.EventHandler(this.massImportToolStripMenuItem_Click);
             // 
             // filtersToolStripMenuItem
             // 
@@ -499,6 +508,7 @@ namespace FFVI_tileTool
         private System.Windows.Forms.Button button1;
         private System.Windows.Forms.Button button2;
         private System.Windows.Forms.ToolStripMenuItem browseAndMassExportToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem massImportToolStripMenuItem;
         private System.Windows.Forms.GroupBox groupBox1;
         private System.Windows.Forms.GroupBox groupBox2;
         private System.Windows.Forms.Button button3;
