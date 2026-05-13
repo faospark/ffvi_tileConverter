@@ -1543,29 +1543,12 @@ namespace FFVI_tileTool
 
         private static void BuildGameImportData(Bitmap bmp, out byte[] paletteBuffer, out byte[] pixelBuffer)
         {
-            const byte keyR = 0x05;
-            const byte keyG = 0x05;
-            const byte keyB = 0x05;
-
             paletteBuffer = new byte[1024];
             System.Drawing.Color[] entries = bmp.Palette.Entries;
-
-            int keyIndex = -1;
-            for (int i = 0; i < entries.Length; i++)
-            {
-                if (entries[i].R == keyR && entries[i].G == keyG && entries[i].B == keyB)
-                {
-                    keyIndex = i;
-                    break;
-                }
-            }
-            if (keyIndex < 0) keyIndex = 255;
 
             for (int i = 0; i < 256; i++)
             {
                 System.Drawing.Color color = i < entries.Length ? entries[i] : System.Drawing.Color.FromArgb(255, 0, 0, 0);
-                if (i == keyIndex)
-                    color = System.Drawing.Color.FromArgb(255, keyR, keyG, keyB);
 
                 paletteBuffer[i * 4 + 0] = color.B;
                 paletteBuffer[i * 4 + 1] = color.G;
@@ -1591,16 +1574,6 @@ namespace FFVI_tileTool
             finally
             {
                 bmp.UnlockBits(bmpData);
-            }
-
-            for (int i = 0; i < pixelBuffer.Length; i++)
-            {
-                int paletteIndex = pixelBuffer[i];
-                System.Drawing.Color sourceColor = paletteIndex < entries.Length ? entries[paletteIndex] : System.Drawing.Color.FromArgb(255, 0, 0, 0);
-                bool isKeyColor = sourceColor.R == keyR && sourceColor.G == keyG && sourceColor.B == keyB;
-                bool isTransparent = sourceColor.A < 128;
-                if (isKeyColor || isTransparent)
-                    pixelBuffer[i] = (byte)keyIndex;
             }
         }
 
