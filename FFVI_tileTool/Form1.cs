@@ -856,6 +856,13 @@ namespace FFVI_tileTool
 
             if (string.IsNullOrWhiteSpace(folderPath) || !Directory.Exists(folderPath)) return;
 
+            if (HasExistingMapBackup(folderPath))
+            {
+                backupReminderHandledSession = true;
+                MarkBackupReminderShown();
+                return;
+            }
+
             string[] mapFiles = Directory.GetFiles(folderPath, "map*.bin", SearchOption.TopDirectoryOnly);
             if (mapFiles.Length == 0) return;
 
@@ -878,6 +885,18 @@ namespace FFVI_tileTool
             }
 
             MarkBackupReminderShown();
+        }
+
+        private static bool HasExistingMapBackup(string folderPath)
+        {
+            if (string.IsNullOrWhiteSpace(folderPath) || !Directory.Exists(folderPath))
+                return false;
+
+            string backupRoot = Path.Combine(folderPath, "map_backup");
+            if (!Directory.Exists(backupRoot))
+                return false;
+
+            return Directory.EnumerateFiles(backupRoot, "map*.bin", SearchOption.AllDirectories).Any();
         }
 
         private static bool TryCreateMapBackup(string folderPath, out int backedUpCount, out int skippedCount, out int failedCount, out string outputFolder)

@@ -1,5 +1,6 @@
 using System;
 using System.Drawing;
+using System.Reflection;
 using System.Windows.Forms;
 
 namespace FFVI_tileTool
@@ -99,6 +100,15 @@ namespace FFVI_tileTool
             infoTab.Controls.Add(infoPanel);
 
             int yPos = 10;
+            var versionLabel = new Label
+            {
+                Text = $"Version: {GetDisplayVersion()}",
+                AutoSize = true,
+                Location = new Point(0, yPos)
+            };
+            infoPanel.Controls.Add(versionLabel);
+
+            yPos += 40;
             var authorLabelPart1 = new Label
             {
                 Text = "Main Author: ",
@@ -240,6 +250,17 @@ namespace FFVI_tileTool
                 foreach (Control child in GetAllControls(control))
                     yield return child;
             }
+        }
+
+        private static string GetDisplayVersion()
+        {
+            Assembly assembly = Assembly.GetExecutingAssembly();
+            AssemblyInformationalVersionAttribute info = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>();
+            if (info != null && !string.IsNullOrWhiteSpace(info.InformationalVersion))
+                return info.InformationalVersion;
+
+            Version version = assembly.GetName().Version;
+            return version != null ? version.ToString() : "unknown";
         }
 
         private string GetMITLicense()
