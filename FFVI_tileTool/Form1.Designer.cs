@@ -1,4 +1,4 @@
-﻿namespace FFVI_tileTool
+namespace FFVI_tileTool
 {
     partial class Form1
     {
@@ -60,11 +60,11 @@
             this.groupBox1 = new System.Windows.Forms.GroupBox();
             this.button2 = new System.Windows.Forms.Button();
             this.button1 = new System.Windows.Forms.Button();
-            this.buttonChunk1PaletteInfo = new System.Windows.Forms.Button();
+            this.buttonSection1PaletteInfo = new System.Windows.Forms.Button();
             this.groupBox2 = new System.Windows.Forms.GroupBox();
             this.button3 = new System.Windows.Forms.Button();
             this.button4 = new System.Windows.Forms.Button();
-            this.buttonChunk2PaletteInfo = new System.Windows.Forms.Button();
+            this.buttonSection2PaletteInfo = new System.Windows.Forms.Button();
             this.menuStrip1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
             this.splitContainer1.Panel1.SuspendLayout();
@@ -355,7 +355,7 @@
             // 
             // groupBox1
             // 
-            this.groupBox1.Controls.Add(this.buttonChunk1PaletteInfo);
+            this.groupBox1.Controls.Add(this.buttonSection1PaletteInfo);
             this.groupBox1.Controls.Add(this.button2);
             this.groupBox1.Controls.Add(this.button1);
             this.groupBox1.Location = new System.Drawing.Point(3, 3);
@@ -385,19 +385,19 @@
             this.button1.UseVisualStyleBackColor = true;
             this.button1.Click += new System.EventHandler(this.button1_Click);
             // 
-            // buttonChunk1PaletteInfo
+            // buttonSection1PaletteInfo
             // 
-            this.buttonChunk1PaletteInfo.Location = new System.Drawing.Point(378, 19);
-            this.buttonChunk1PaletteInfo.Name = "buttonChunk1PaletteInfo";
-            this.buttonChunk1PaletteInfo.Size = new System.Drawing.Size(180, 23);
-            this.buttonChunk1PaletteInfo.TabIndex = 2;
-            this.buttonChunk1PaletteInfo.Text = "Palette info: n/a";
-            this.buttonChunk1PaletteInfo.UseVisualStyleBackColor = true;
-            this.buttonChunk1PaletteInfo.Click += new System.EventHandler(this.buttonChunk1PaletteInfo_Click);
+            this.buttonSection1PaletteInfo.Location = new System.Drawing.Point(378, 19);
+            this.buttonSection1PaletteInfo.Name = "buttonSection1PaletteInfo";
+            this.buttonSection1PaletteInfo.Size = new System.Drawing.Size(180, 23);
+            this.buttonSection1PaletteInfo.TabIndex = 2;
+            this.buttonSection1PaletteInfo.Text = "Palette info: n/a";
+            this.buttonSection1PaletteInfo.UseVisualStyleBackColor = true;
+            this.buttonSection1PaletteInfo.Click += new System.EventHandler(this.buttonSection1PaletteInfo_Click);
             // 
             // groupBox2
             // 
-            this.groupBox2.Controls.Add(this.buttonChunk2PaletteInfo);
+            this.groupBox2.Controls.Add(this.buttonSection2PaletteInfo);
             this.groupBox2.Controls.Add(this.button3);
             this.groupBox2.Controls.Add(this.button4);
             this.groupBox2.Location = new System.Drawing.Point(3, 59);
@@ -427,15 +427,15 @@
             this.button4.UseVisualStyleBackColor = true;
             this.button4.Click += new System.EventHandler(this.button4_Click);
             // 
-            // buttonChunk2PaletteInfo
+            // buttonSection2PaletteInfo
             // 
-            this.buttonChunk2PaletteInfo.Location = new System.Drawing.Point(378, 19);
-            this.buttonChunk2PaletteInfo.Name = "buttonChunk2PaletteInfo";
-            this.buttonChunk2PaletteInfo.Size = new System.Drawing.Size(180, 23);
-            this.buttonChunk2PaletteInfo.TabIndex = 2;
-            this.buttonChunk2PaletteInfo.Text = "Palette info: n/a";
-            this.buttonChunk2PaletteInfo.UseVisualStyleBackColor = true;
-            this.buttonChunk2PaletteInfo.Click += new System.EventHandler(this.buttonChunk2PaletteInfo_Click);
+            this.buttonSection2PaletteInfo.Location = new System.Drawing.Point(378, 19);
+            this.buttonSection2PaletteInfo.Name = "buttonSection2PaletteInfo";
+            this.buttonSection2PaletteInfo.Size = new System.Drawing.Size(180, 23);
+            this.buttonSection2PaletteInfo.TabIndex = 2;
+            this.buttonSection2PaletteInfo.Text = "Palette info: n/a";
+            this.buttonSection2PaletteInfo.UseVisualStyleBackColor = true;
+            this.buttonSection2PaletteInfo.Click += new System.EventHandler(this.buttonSection2PaletteInfo_Click);
             // 
             // Form1
             // 
@@ -509,7 +509,7 @@
         private System.Windows.Forms.PictureBox pictureBox1;
         private System.Windows.Forms.Panel panel1;
         private System.Windows.Forms.Panel panel2;
-        private System.Windows.Forms.Button buttonChunk1PaletteInfo;
-        private System.Windows.Forms.Button buttonChunk2PaletteInfo;
+        private System.Windows.Forms.Button buttonSection1PaletteInfo;
+        private System.Windows.Forms.Button buttonSection2PaletteInfo;
     }
 }

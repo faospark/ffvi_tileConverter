@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -65,10 +65,10 @@ namespace FFVI_tileTool
         string[] st;
         private string[] allMapFiles = new string[0];
         private List<string> recentDirectories = new List<string>();
-        private List<int> currentChunk1PaletteOffsets = new List<int>();
-        private List<int> currentChunk2PaletteOffsets = new List<int>();
-        private byte[] currentChunk1Palette = new byte[1024];
-        private byte[] currentChunk2Palette = new byte[1024];
+        private List<int> currentSection1PaletteOffsets = new List<int>();
+        private List<int> currentSection2PaletteOffsets = new List<int>();
+        private byte[] currentSection1Palette = new byte[1024];
+        private byte[] currentSection2Palette = new byte[1024];
         private MapCategoryFilter activeMapFilter = MapCategoryFilter.Off;
         private bool backupReminderHandledSession;
         public Form1()
@@ -1398,7 +1398,7 @@ namespace FFVI_tileTool
             return bitmap;
         }
 
-        private static void LoadChunkBitmaps(string filePath, out Bitmap firstChunk, out Bitmap secondChunk)
+        private static void LoadSectionBitmaps(string filePath, out Bitmap firstSection, out Bitmap secondSection)
         {
             byte[] firstPaletteBuffer;
             byte[] firstImageBuffer;
@@ -1419,12 +1419,12 @@ namespace FFVI_tileTool
                 }
             }
 
-            firstChunk = BuildIndexedBitmap(firstImageBuffer, firstPaletteBuffer, 512, 512);
+            firstSection = BuildIndexedBitmap(firstImageBuffer, firstPaletteBuffer, 512, 512);
 
             if (secondImageBuffer.Length > 512)
-                secondChunk = BuildIndexedBitmap(secondImageBuffer, secondPaletteBuffer, 512, secondImageBuffer.Length / 512);
+                secondSection = BuildIndexedBitmap(secondImageBuffer, secondPaletteBuffer, 512, secondImageBuffer.Length / 512);
             else
-                secondChunk = null;
+                secondSection = null;
         }
 
         private void RenderImage(string file)
@@ -1432,18 +1432,18 @@ namespace FFVI_tileTool
             Bitmap oldFirst = pictureBox1.Image as Bitmap;
             Bitmap oldSecond = pictureBox2.Image as Bitmap;
 
-            LoadChunkBitmaps(file, out Bitmap firstChunk, out Bitmap secondChunk);
+            LoadSectionBitmaps(file, out Bitmap firstSection, out Bitmap secondSection);
             UpdatePaletteInfo(file);
 
-            pictureBox1.Size = firstChunk.Size;
-            pictureBox1.Image = firstChunk;
-            panel1.AutoScrollMinSize = firstChunk.Size;
+            pictureBox1.Size = firstSection.Size;
+            pictureBox1.Image = firstSection;
+            panel1.AutoScrollMinSize = firstSection.Size;
 
-            if (secondChunk != null)
+            if (secondSection != null)
             {
-                pictureBox2.Size = secondChunk.Size;
-                panel2.AutoScrollMinSize = secondChunk.Size;
-                pictureBox2.Image = secondChunk;
+                pictureBox2.Size = secondSection.Size;
+                panel2.AutoScrollMinSize = secondSection.Size;
+                pictureBox2.Image = secondSection;
             }
             else
             {
@@ -1458,12 +1458,12 @@ namespace FFVI_tileTool
 
         private void button1_Click(object sender, EventArgs e)
         {
-            ExportImage(pictureBox1.Image, $"{listBox1.SelectedValue}_chunk1");
+            ExportImage(pictureBox1.Image, $"{listBox1.SelectedValue}_Section1");
         }
 
         private void button4_Click(object sender, EventArgs e)
         {
-            ExportImage(pictureBox2.Image, $"{listBox1.SelectedValue}_chunk2");
+            ExportImage(pictureBox2.Image, $"{listBox1.SelectedValue}_Section2");
         }
 
         private void ExportImage(Image image, string defaultBaseFileName)
@@ -1488,7 +1488,7 @@ namespace FFVI_tileTool
 
         private void button2_Click(object sender, EventArgs e)
         {
-            //is 1st chunk
+            //is 1st Section
             string path = "";
             using (OpenFileDialog ofd = new OpenFileDialog() { Filter = "Image files (*.png;*.bmp)|*.png;*.bmp|PNG files (*.png)|*.png|BMP files (*.bmp)|*.bmp", Multiselect = false })
                 if (ofd.ShowDialog() == DialogResult.OK)
@@ -1514,18 +1514,18 @@ namespace FFVI_tileTool
             string filePath = st.Where(x => Path.GetFileName(x) == (string)listBox1.SelectedValue).First();
             byte[] bb = File.ReadAllBytes(filePath);
             byte[] originalPalette = ReadPaletteBlock(bb, 0);
-            int chunk2PaletteOffset = GetChunk2PaletteOffset(bb.Length);
-            int chunk1SearchEnd = chunk2PaletteOffset >= 0 ? chunk2PaletteOffset : bb.Length;
-            List<int> chunk1PaletteOffsets = FindPaletteOffsetsInRange(bb, originalPalette, 0, chunk1SearchEnd);
+            int Section2PaletteOffset = GetSection2PaletteOffset(bb.Length);
+            int Section1SearchEnd = Section2PaletteOffset >= 0 ? Section2PaletteOffset : bb.Length;
+            List<int> Section1PaletteOffsets = FindPaletteOffsetsInRange(bb, originalPalette, 0, Section1SearchEnd);
             Buffer.BlockCopy(b, 0, bb, 0, b.Length);
-            ApplyPaletteAtOffsets(bb, chunk1PaletteOffsets, palBuffer);
+            ApplyPaletteAtOffsets(bb, Section1PaletteOffsets, palBuffer);
             File.WriteAllBytes(filePath, bb);
             RenderImage(filePath);
         }
 
         private void button3_Click(object sender, EventArgs e)
         {
-            //2nd chunk
+            //2nd Section
             string path = "";
             using (OpenFileDialog ofd = new OpenFileDialog() { Filter = "Image files (*.png;*.bmp)|*.png;*.bmp|PNG files (*.png)|*.png|BMP files (*.bmp)|*.bmp", Multiselect = false })
                 if (ofd.ShowDialog() == DialogResult.OK)
@@ -1552,7 +1552,7 @@ namespace FFVI_tileTool
             byte[] bb = File.ReadAllBytes(filePath);
             //if(bb.Length < 512*512+1024+b.Length + 512*24)
             //{
-            //    MessageBox.Show("Second chunk is too big!");
+            //    MessageBox.Show("Second Section is too big!");
             //    return;
             //}
 
@@ -1611,7 +1611,7 @@ namespace FFVI_tileTool
             return paletteBuffer;
         }
 
-        private static int GetChunk2PaletteOffset(int fileLength)
+        private static int GetSection2PaletteOffset(int fileLength)
         {
             int offset = fileLength - 0x80400;
             return offset >= 0 ? offset : -1;
@@ -1671,41 +1671,41 @@ namespace FFVI_tileTool
         {
             if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
             {
-                buttonChunk1PaletteInfo.Text = "Palette info: n/a";
-                buttonChunk2PaletteInfo.Text = "Palette info: n/a";
-                currentChunk1PaletteOffsets = new List<int>();
-                currentChunk2PaletteOffsets = new List<int>();
-                currentChunk1Palette = new byte[1024];
-                currentChunk2Palette = new byte[1024];
+                buttonSection1PaletteInfo.Text = "Palette info: n/a";
+                buttonSection2PaletteInfo.Text = "Palette info: n/a";
+                currentSection1PaletteOffsets = new List<int>();
+                currentSection2PaletteOffsets = new List<int>();
+                currentSection1Palette = new byte[1024];
+                currentSection2Palette = new byte[1024];
                 return;
             }
 
             byte[] fileBuffer = File.ReadAllBytes(filePath);
             if (fileBuffer.Length < 1024)
             {
-                buttonChunk1PaletteInfo.Text = "Palette info: n/a";
-                buttonChunk2PaletteInfo.Text = "Palette info: n/a";
-                currentChunk1PaletteOffsets = new List<int>();
-                currentChunk2PaletteOffsets = new List<int>();
-                currentChunk1Palette = new byte[1024];
-                currentChunk2Palette = new byte[1024];
+                buttonSection1PaletteInfo.Text = "Palette info: n/a";
+                buttonSection2PaletteInfo.Text = "Palette info: n/a";
+                currentSection1PaletteOffsets = new List<int>();
+                currentSection2PaletteOffsets = new List<int>();
+                currentSection1Palette = new byte[1024];
+                currentSection2Palette = new byte[1024];
                 return;
             }
 
-            byte[] chunk1Palette = ReadPaletteBlock(fileBuffer, 0);
-            int chunk2PaletteOffset = GetChunk2PaletteOffset(fileBuffer.Length);
-            byte[] chunk2Palette = chunk2PaletteOffset >= 0 ? ReadPaletteBlock(fileBuffer, chunk2PaletteOffset) : new byte[1024];
+            byte[] Section1Palette = ReadPaletteBlock(fileBuffer, 0);
+            int Section2PaletteOffset = GetSection2PaletteOffset(fileBuffer.Length);
+            byte[] Section2Palette = Section2PaletteOffset >= 0 ? ReadPaletteBlock(fileBuffer, Section2PaletteOffset) : new byte[1024];
 
-            currentChunk1Palette = chunk1Palette;
-            currentChunk2Palette = chunk2Palette;
+            currentSection1Palette = Section1Palette;
+            currentSection2Palette = Section2Palette;
 
-            int chunk1SearchEnd = chunk2PaletteOffset >= 0 ? chunk2PaletteOffset : fileBuffer.Length;
-            currentChunk1PaletteOffsets = FindPaletteOffsetsInRange(fileBuffer, chunk1Palette, 0, chunk1SearchEnd);
-            currentChunk2PaletteOffsets = chunk2PaletteOffset >= 0 ? new List<int> { chunk2PaletteOffset } : new List<int>();
+            int Section1SearchEnd = Section2PaletteOffset >= 0 ? Section2PaletteOffset : fileBuffer.Length;
+            currentSection1PaletteOffsets = FindPaletteOffsetsInRange(fileBuffer, Section1Palette, 0, Section1SearchEnd);
+            currentSection2PaletteOffsets = Section2PaletteOffset >= 0 ? new List<int> { Section2PaletteOffset } : new List<int>();
 
-            buttonChunk1PaletteInfo.Text = $"Palette info ({currentChunk1PaletteOffsets.Count})";
-            buttonChunk2PaletteInfo.Text = chunk2PaletteOffset >= 0
-                ? $"Palette 0x{chunk2PaletteOffset:X6}"
+            buttonSection1PaletteInfo.Text = $"Palette info ({currentSection1PaletteOffsets.Count})";
+            buttonSection2PaletteInfo.Text = Section2PaletteOffset >= 0
+                ? $"Palette 0x{Section2PaletteOffset:X6}"
                 : "Palette info: n/a";
         }
 
@@ -1724,14 +1724,14 @@ namespace FFVI_tileTool
             }
         }
 
-        private void buttonChunk1PaletteInfo_Click(object sender, EventArgs e)
+        private void buttonSection1PaletteInfo_Click(object sender, EventArgs e)
         {
-            ShowPaletteOffsets("Section 1 palette offsets", currentChunk1PaletteOffsets, currentChunk1Palette);
+            ShowPaletteOffsets("Section 1 palette offsets", currentSection1PaletteOffsets, currentSection1Palette);
         }
 
-        private void buttonChunk2PaletteInfo_Click(object sender, EventArgs e)
+        private void buttonSection2PaletteInfo_Click(object sender, EventArgs e)
         {
-            ShowPaletteOffsets("Section 2 palette offsets", currentChunk2PaletteOffsets, currentChunk2Palette);
+            ShowPaletteOffsets("Section 2 palette offsets", currentSection2PaletteOffsets, currentSection2Palette);
         }
 
         private void browseAndMassExportToolStripMenuItem_Click(object sender, EventArgs e)
@@ -1883,15 +1883,15 @@ namespace FFVI_tileTool
 
                         try
                         {
-                            LoadChunkBitmaps(filePath, out Bitmap firstChunk, out Bitmap secondChunk);
+                            LoadSectionBitmaps(filePath, out Bitmap firstSection, out Bitmap secondSection);
                             string fileBase = Path.GetFileNameWithoutExtension(filePath);
 
-                            using (firstChunk)
-                                firstChunk.Save(Path.Combine(exportFolder, $"{fileBase}_chunk1.{exportExtension}"), exportImageFormat);
+                            using (firstSection)
+                                firstSection.Save(Path.Combine(exportFolder, $"{fileBase}_Section1.{exportExtension}"), exportImageFormat);
 
-                            if (secondChunk != null)
-                                using (secondChunk)
-                                    secondChunk.Save(Path.Combine(exportFolder, $"{fileBase}_chunk2.{exportExtension}"), exportImageFormat);
+                            if (secondSection != null)
+                                using (secondSection)
+                                    secondSection.Save(Path.Combine(exportFolder, $"{fileBase}_Section2.{exportExtension}"), exportImageFormat);
 
                             exportedCount++;
                         }
@@ -2014,3 +2014,4 @@ namespace FFVI_tileTool
         }
     }
 }
+
