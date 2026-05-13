@@ -446,7 +446,7 @@ namespace FFVI_tileTool
             this.Controls.Add(this.menuStrip1);
             this.MainMenuStrip = this.menuStrip1;
             this.Name = "Form1";
-            this.Text = "FFVI tile tool";
+            this.Text = "FFVI Old Tile Tool";
             this.menuStrip1.ResumeLayout(false);
             this.menuStrip1.PerformLayout();
             this.splitContainer1.Panel1.ResumeLayout(false);

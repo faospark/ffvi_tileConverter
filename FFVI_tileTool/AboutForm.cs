@@ -18,7 +18,7 @@ namespace FFVI_tileTool
 
         private void InitializeComponent()
         {
-            this.Text = "About FFVI Tile Tool";
+            this.Text = "About FFVI Old Tile Tool";
             this.Width = 500;
             this.Height = 500;
             this.StartPosition = FormStartPosition.CenterParent;
@@ -62,7 +62,7 @@ namespace FFVI_tileTool
             // Title
             var titleLabel = new Label
             {
-                Text = "FFVI Tile Tool",
+                Text = "FFVI Old Tile Tool",
                 Font = new Font("Arial", 14, FontStyle.Bold),
                 Dock = DockStyle.Top,
                 TextAlign = ContentAlignment.TopCenter,
@@ -74,7 +74,7 @@ namespace FFVI_tileTool
             // Description
             var descLabel = new Label
             {
-                Text = "FFVI Tile Tool is an application for exploring, exporting and importing tiles from bin files Final Fantasy VI Old Ver",
+                Text = "FFVI Old Tile Tool is an application for exploring, exporting and importing tiles from bin files Final Fantasy VI Old Ver",
                 Dock = DockStyle.Top,
                 TextAlign = ContentAlignment.TopCenter,
                 Height = 60,

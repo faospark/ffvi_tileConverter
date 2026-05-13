@@ -38,7 +38,7 @@ namespace FFVI_tileTool
         private const string RecentDirectoriesStateName = "recent-map-directories.txt";
         private const string DarkModeStateName = "dark-mode.txt";
         private const string BackupReminderStateName = "backup-reminder-shown.txt";
-        private const string DefaultWindowTitle = "FFVI tile tool";
+        private const string DefaultWindowTitle = "FFVI Old Tile Tool";
         private const int MaxRecentDirectories = 8;
 
         private static readonly HashSet<string> SnowTileMaps = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
