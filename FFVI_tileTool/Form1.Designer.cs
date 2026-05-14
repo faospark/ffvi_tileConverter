@@ -357,7 +357,7 @@ namespace FFVI_tileTool
             this.groupBox4.Size = new System.Drawing.Size(547, 548);
             this.groupBox4.TabIndex = 1;
             this.groupBox4.TabStop = false;
-            this.groupBox4.Text = "Second section Image";
+            this.groupBox4.Text = "Second Section Image";
             // 
             // panel2
             // 
@@ -386,7 +386,7 @@ namespace FFVI_tileTool
             this.groupBox3.Size = new System.Drawing.Size(547, 548);
             this.groupBox3.TabIndex = 0;
             this.groupBox3.TabStop = false;
-            this.groupBox3.Text = "First section Image";
+            this.groupBox3.Text = "First Section Image";
             // 
             // panel1
             // 
