@@ -52,6 +52,9 @@ namespace FFVI_tileTool
             this.revealInFileExplorerToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.gzipThisFileToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.isolateSelectedFilesToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.previewSection2ContextMenuStrip = new System.Windows.Forms.ContextMenuStrip();
+            this.previewSection2ExportImageToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.previewSection2ImportImageToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.splitContainer2 = new System.Windows.Forms.SplitContainer();
             this.groupBox4 = new System.Windows.Forms.GroupBox();
             this.pictureBox2 = new System.Windows.Forms.PictureBox();
@@ -59,6 +62,9 @@ namespace FFVI_tileTool
             this.panel1 = new System.Windows.Forms.Panel();
             this.panel2 = new System.Windows.Forms.Panel();
             this.pictureBox1 = new System.Windows.Forms.PictureBox();
+            this.previewSection1ContextMenuStrip = new System.Windows.Forms.ContextMenuStrip();
+            this.previewSection1ExportImageToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.previewSection1ImportImageToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.flowLayoutPanel1 = new System.Windows.Forms.FlowLayoutPanel();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
             this.button2 = new System.Windows.Forms.Button();
@@ -302,6 +308,28 @@ namespace FFVI_tileTool
             this.isolateSelectedFilesToolStripMenuItem.Text = "Isolate selected file(s)";
             this.isolateSelectedFilesToolStripMenuItem.Click += new System.EventHandler(this.isolateSelectedFilesToolStripMenuItem_Click);
             // 
+            // previewSection2ContextMenuStrip
+            // 
+            this.previewSection2ContextMenuStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.previewSection2ExportImageToolStripMenuItem,
+            this.previewSection2ImportImageToolStripMenuItem});
+            this.previewSection2ContextMenuStrip.Name = "previewSection2ContextMenuStrip";
+            this.previewSection2ContextMenuStrip.Size = new System.Drawing.Size(139, 48);
+            // 
+            // previewSection2ExportImageToolStripMenuItem
+            // 
+            this.previewSection2ExportImageToolStripMenuItem.Name = "previewSection2ExportImageToolStripMenuItem";
+            this.previewSection2ExportImageToolStripMenuItem.Size = new System.Drawing.Size(138, 22);
+            this.previewSection2ExportImageToolStripMenuItem.Text = "Export image";
+            this.previewSection2ExportImageToolStripMenuItem.Click += new System.EventHandler(this.previewSection2ExportImageToolStripMenuItem_Click);
+            // 
+            // previewSection2ImportImageToolStripMenuItem
+            // 
+            this.previewSection2ImportImageToolStripMenuItem.Name = "previewSection2ImportImageToolStripMenuItem";
+            this.previewSection2ImportImageToolStripMenuItem.Size = new System.Drawing.Size(138, 22);
+            this.previewSection2ImportImageToolStripMenuItem.Text = "Import image";
+            this.previewSection2ImportImageToolStripMenuItem.Click += new System.EventHandler(this.previewSection2ImportImageToolStripMenuItem_Click);
+            // 
             // splitContainer2
             // 
             this.splitContainer2.Dock = System.Windows.Forms.DockStyle.Fill;
@@ -347,6 +375,7 @@ namespace FFVI_tileTool
             this.pictureBox2.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Normal;
             this.pictureBox2.TabIndex = 0;
             this.pictureBox2.TabStop = false;
+            this.pictureBox2.ContextMenuStrip = this.previewSection2ContextMenuStrip;
             // 
             // groupBox3
             // 
@@ -377,6 +406,29 @@ namespace FFVI_tileTool
             this.pictureBox1.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Normal;
             this.pictureBox1.TabIndex = 0;
             this.pictureBox1.TabStop = false;
+            this.pictureBox1.ContextMenuStrip = this.previewSection1ContextMenuStrip;
+            // 
+            // previewSection1ContextMenuStrip
+            // 
+            this.previewSection1ContextMenuStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.previewSection1ExportImageToolStripMenuItem,
+            this.previewSection1ImportImageToolStripMenuItem});
+            this.previewSection1ContextMenuStrip.Name = "previewSection1ContextMenuStrip";
+            this.previewSection1ContextMenuStrip.Size = new System.Drawing.Size(139, 48);
+            // 
+            // previewSection1ExportImageToolStripMenuItem
+            // 
+            this.previewSection1ExportImageToolStripMenuItem.Name = "previewSection1ExportImageToolStripMenuItem";
+            this.previewSection1ExportImageToolStripMenuItem.Size = new System.Drawing.Size(138, 22);
+            this.previewSection1ExportImageToolStripMenuItem.Text = "Export image";
+            this.previewSection1ExportImageToolStripMenuItem.Click += new System.EventHandler(this.previewSection1ExportImageToolStripMenuItem_Click);
+            // 
+            // previewSection1ImportImageToolStripMenuItem
+            // 
+            this.previewSection1ImportImageToolStripMenuItem.Name = "previewSection1ImportImageToolStripMenuItem";
+            this.previewSection1ImportImageToolStripMenuItem.Size = new System.Drawing.Size(138, 22);
+            this.previewSection1ImportImageToolStripMenuItem.Text = "Import image";
+            this.previewSection1ImportImageToolStripMenuItem.Click += new System.EventHandler(this.previewSection1ImportImageToolStripMenuItem_Click);
             // 
             // flowLayoutPanel1
             // 
@@ -531,6 +583,9 @@ namespace FFVI_tileTool
         private System.Windows.Forms.ToolStripMenuItem revealInFileExplorerToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem gzipThisFileToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem isolateSelectedFilesToolStripMenuItem;
+        private System.Windows.Forms.ContextMenuStrip previewSection2ContextMenuStrip;
+        private System.Windows.Forms.ToolStripMenuItem previewSection2ExportImageToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem previewSection2ImportImageToolStripMenuItem;
         private System.Windows.Forms.SplitContainer splitContainer2;
         private System.Windows.Forms.FlowLayoutPanel flowLayoutPanel1;
         private System.Windows.Forms.Button button1;
@@ -549,5 +604,8 @@ namespace FFVI_tileTool
         private System.Windows.Forms.Panel panel2;
         private System.Windows.Forms.Button buttonSection1PaletteInfo;
         private System.Windows.Forms.Button buttonSection2PaletteInfo;
+        private System.Windows.Forms.ContextMenuStrip previewSection1ContextMenuStrip;
+        private System.Windows.Forms.ToolStripMenuItem previewSection1ExportImageToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem previewSection1ImportImageToolStripMenuItem;
     }
 }

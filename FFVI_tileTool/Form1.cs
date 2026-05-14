@@ -1429,6 +1429,8 @@ namespace FFVI_tileTool
                 ApplyThemeToMenuItem(item, surface, foreground);
 
             ApplyThemeToContextMenu(fileListContextMenuStrip, surface, foreground);
+            ApplyThemeToContextMenu(previewSection1ContextMenuStrip, surface, foreground);
+            ApplyThemeToContextMenu(previewSection2ContextMenuStrip, surface, foreground);
         }
 
         private void ApplyThemeToContextMenu(ContextMenuStrip contextMenu, System.Drawing.Color surface, System.Drawing.Color foreground)
@@ -1698,9 +1700,19 @@ namespace FFVI_tileTool
             ExportImage(currentSection1SourceBitmap, $"{listBox1.SelectedValue}_Section1");
         }
 
+        private void previewSection1ExportImageToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            button1_Click(sender, e);
+        }
+
         private void button4_Click(object sender, EventArgs e)
         {
             ExportImage(currentSection2SourceBitmap, $"{listBox1.SelectedValue}_Section2");
+        }
+
+        private void previewSection2ExportImageToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            button4_Click(sender, e);
         }
 
         private void ExportImage(Image image, string defaultBaseFileName)
@@ -1760,6 +1772,11 @@ namespace FFVI_tileTool
             RenderImage(filePath);
         }
 
+        private void previewSection1ImportImageToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            button2_Click(sender, e);
+        }
+
         private void button3_Click(object sender, EventArgs e)
         {
             //2nd Section
@@ -1796,6 +1813,11 @@ namespace FFVI_tileTool
             Buffer.BlockCopy(b, 0, bb, bb.Length-0x80400, b.Length);
             File.WriteAllBytes(filePath, bb);
             RenderImage(filePath);
+        }
+
+        private void previewSection2ImportImageToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            button3_Click(sender, e);
         }
 
         private static string FindExistingSectionImagePath(string folderPath, string fileBase, string sectionSuffix)
