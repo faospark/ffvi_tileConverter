@@ -352,7 +352,7 @@ namespace FFVI_tileTool
             // groupBox4
             // 
             this.groupBox4.Controls.Add(this.panel2);
-            this.groupBox4.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.groupBox4.Dock = System.Windows.Forms.DockStyle.Left;
             this.groupBox4.Name = "groupBox4";
             this.groupBox4.Size = new System.Drawing.Size(547, 548);
             this.groupBox4.TabIndex = 1;
@@ -450,13 +450,13 @@ namespace FFVI_tileTool
             this.groupBox1.Size = new System.Drawing.Size(564, 50);
             this.groupBox1.TabIndex = 2;
             this.groupBox1.TabStop = false;
-            this.groupBox1.Text = "I/O controls section 1";
+            this.groupBox1.Text = "I/O controls Section 1";
             // 
             // button2
             // 
             this.button2.Location = new System.Drawing.Point(192, 19);
             this.button2.Name = "button2";
-            this.button2.Size = new System.Drawing.Size(180, 23);
+            this.button2.Size = new System.Drawing.Size(150, 24);
             this.button2.TabIndex = 1;
             this.button2.Text = "Import image";
             this.button2.UseVisualStyleBackColor = true;
@@ -466,7 +466,7 @@ namespace FFVI_tileTool
             // 
             this.button1.Location = new System.Drawing.Point(6, 19);
             this.button1.Name = "button1";
-            this.button1.Size = new System.Drawing.Size(180, 23);
+            this.button1.Size = new System.Drawing.Size(150, 24);
             this.button1.TabIndex = 0;
             this.button1.Text = "Export image";
             this.button1.UseVisualStyleBackColor = true;
@@ -476,9 +476,9 @@ namespace FFVI_tileTool
             // 
             this.buttonSection1PaletteInfo.Location = new System.Drawing.Point(378, 19);
             this.buttonSection1PaletteInfo.Name = "buttonSection1PaletteInfo";
-            this.buttonSection1PaletteInfo.Size = new System.Drawing.Size(180, 23);
+            this.buttonSection1PaletteInfo.Size = new System.Drawing.Size(150, 24);
             this.buttonSection1PaletteInfo.TabIndex = 2;
-            this.buttonSection1PaletteInfo.Text = "Palette info: n/a";
+            this.buttonSection1PaletteInfo.Text = "Image Info: n/a";
             this.buttonSection1PaletteInfo.UseVisualStyleBackColor = true;
             this.buttonSection1PaletteInfo.Click += new System.EventHandler(this.buttonSection1PaletteInfo_Click);
             // 
@@ -492,13 +492,13 @@ namespace FFVI_tileTool
             this.groupBox2.Size = new System.Drawing.Size(564, 50);
             this.groupBox2.TabIndex = 3;
             this.groupBox2.TabStop = false;
-            this.groupBox2.Text = "I/O controls section 2";
+            this.groupBox2.Text = "I/O controls Section 2";
             // 
             // button3
             // 
             this.button3.Location = new System.Drawing.Point(192, 19);
             this.button3.Name = "button3";
-            this.button3.Size = new System.Drawing.Size(180, 23);
+            this.button3.Size = new System.Drawing.Size(150, 24);
             this.button3.TabIndex = 1;
             this.button3.Text = "Import image";
             this.button3.UseVisualStyleBackColor = true;
@@ -508,7 +508,7 @@ namespace FFVI_tileTool
             // 
             this.button4.Location = new System.Drawing.Point(6, 19);
             this.button4.Name = "button4";
-            this.button4.Size = new System.Drawing.Size(180, 23);
+            this.button4.Size = new System.Drawing.Size(150, 24);
             this.button4.TabIndex = 0;
             this.button4.Text = "Export image";
             this.button4.UseVisualStyleBackColor = true;
@@ -518,9 +518,9 @@ namespace FFVI_tileTool
             // 
             this.buttonSection2PaletteInfo.Location = new System.Drawing.Point(378, 19);
             this.buttonSection2PaletteInfo.Name = "buttonSection2PaletteInfo";
-            this.buttonSection2PaletteInfo.Size = new System.Drawing.Size(180, 23);
+            this.buttonSection2PaletteInfo.Size = new System.Drawing.Size(150, 24);
             this.buttonSection2PaletteInfo.TabIndex = 2;
-            this.buttonSection2PaletteInfo.Text = "Palette info: n/a";
+            this.buttonSection2PaletteInfo.Text = "Image Info: n/a";
             this.buttonSection2PaletteInfo.UseVisualStyleBackColor = true;
             this.buttonSection2PaletteInfo.Click += new System.EventHandler(this.buttonSection2PaletteInfo_Click);
             // 

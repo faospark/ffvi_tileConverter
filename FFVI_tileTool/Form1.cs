@@ -2029,8 +2029,8 @@ namespace FFVI_tileTool
         {
             if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
             {
-                buttonSection1PaletteInfo.Text = "Palette info: n/a";
-                buttonSection2PaletteInfo.Text = "Palette info: n/a";
+                buttonSection1PaletteInfo.Text = "Image Info: n/a";
+                buttonSection2PaletteInfo.Text = "Image Info: n/a";
                 currentSection1PaletteOffsets = new List<int>();
                 currentSection2PaletteOffsets = new List<int>();
                 currentSection1Palette = new byte[1024];
@@ -2041,8 +2041,8 @@ namespace FFVI_tileTool
             byte[] fileBuffer = File.ReadAllBytes(filePath);
             if (fileBuffer.Length < 1024)
             {
-                buttonSection1PaletteInfo.Text = "Palette info: n/a";
-                buttonSection2PaletteInfo.Text = "Palette info: n/a";
+                buttonSection1PaletteInfo.Text = "Image Info: n/a";
+                buttonSection2PaletteInfo.Text = "Image Info: n/a";
                 currentSection1PaletteOffsets = new List<int>();
                 currentSection2PaletteOffsets = new List<int>();
                 currentSection1Palette = new byte[1024];
@@ -2061,10 +2061,10 @@ namespace FFVI_tileTool
             currentSection1PaletteOffsets = FindPaletteOffsetsInRange(fileBuffer, Section1Palette, 0, Section1SearchEnd);
             currentSection2PaletteOffsets = Section2PaletteOffset >= 0 ? new List<int> { Section2PaletteOffset } : new List<int>();
 
-            buttonSection1PaletteInfo.Text = $"Palette info ({currentSection1PaletteOffsets.Count})";
+            buttonSection1PaletteInfo.Text = $"Image Info ({currentSection1PaletteOffsets.Count})";
             buttonSection2PaletteInfo.Text = Section2PaletteOffset >= 0
-                ? $"Palette 0x{Section2PaletteOffset:X6}"
-                : "Palette info: n/a";
+                ? $"Image Info 0x{Section2PaletteOffset:X6}"
+                : "Image Info: n/a";
         }
 
         private void ShowPaletteOffsets(string title, List<int> offsets, byte[] palette)
