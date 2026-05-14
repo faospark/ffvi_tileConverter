@@ -1,14 +1,10 @@
 # FFVI Old Tile Tool
 
-FFVI Old Tile Tool is a Windows Forms utility for viewing, exporting, importing, and managing section graphics stored in Final Fantasy VI Old Ver map bin files.
+FFVI Old Tile Tool is an application for viewing, exporting, importing, and managing section graphics / tiles stored in Final Fantasy VI Old Ver map bin files. This is based of Maki's Original FFVI Tile Tool. This version attempts to lessen the friction in editing the tiles of the game and introduces a variety of quality of life improvements in the work flow. 
 
-The project is focused on practical modding workflows:
-- open a folder of map files quickly
-- inspect section images side-by-side
-- import edited indexed images back into the bin safely
-- track and review palette placement
-- batch export map images
-- keep source data safe with backup and isolation tools
+## Key Change from Previous Versions
+This version can now properly reinsert modified section 1 (Previously called Chunk 1) 
+
 
 ## What The Tool Does
 
@@ -20,7 +16,7 @@ You can then:
 - export either section to PNG or BMP
 - import an 8-bit indexed image into either section
 - inspect palette locations and colors used by each section
-- run folder-level workflows like mass export, backup, filtering, and file isolation
+- run folder-level workflows like mass export, backup, and file isolation
 
 ## Key Features
 
@@ -29,18 +25,6 @@ You can then:
 - Export image for Section 1 and Section 2
 - Import image for Section 1 and Section 2
 - Strict indexed color workflow for reliable palette-based editing
-
-### Palette-Aware Import
-- Palette import is full replacement for the target section
-- Pixel index data is copied directly from the imported indexed image
-- Palette data is copied directly from the imported indexed image
-- No index remapping is performed during normal import flow
-
-### Dynamic Palette Offset Detection
-- Palette offsets are discovered from file content, not fixed hardcoded lists
-- Section 1 palette copies are scanned in the valid range before Section 2 starts
-- Section 2 palette uses its dedicated offset
-- Prevents overlap/collision issues when palettes are identical
 
 ### Palette Info Dialog
 - Clickable palette info buttons for Section 1 and Section 2
@@ -163,6 +147,14 @@ This repository includes iterative quality-of-life and reliability improvements 
 - backup recommendation flow and backup generation
 - better handling around map bin.gz decompression paths
 - safer launch fallback behavior for unsupported command-line usage
+
+The project is focused on practical modding workflows:
+- open a folder of map files quickly
+- inspect section images side-by-side
+- import edited indexed images back into the bin safely
+- track and review palette placement
+- batch export map images
+- keep source data safe with backup and isolation tools
 
 ## Known Limitations
 

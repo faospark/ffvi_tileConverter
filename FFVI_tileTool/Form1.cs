@@ -71,15 +71,34 @@ namespace FFVI_tileTool
         private byte[] currentSection2Palette = new byte[1024];
         private MapCategoryFilter activeMapFilter = MapCategoryFilter.Off;
         private bool backupReminderHandledSession;
+        private ToolStripMenuItem previewTreat050505AsTransparentToolStripMenuItem;
+        private bool previewTreat050505AsTransparent;
+        private Bitmap currentSection1SourceBitmap;
+        private Bitmap currentSection2SourceBitmap;
+        private Bitmap previewCheckerBackgroundBitmap;
         public Form1()
         {
             InitializeComponent();
             Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
             Text = DefaultWindowTitle;
 
+            previewTreat050505AsTransparentToolStripMenuItem = new ToolStripMenuItem("Preview 05/05/05 As Transparent")
+            {
+                CheckOnClick = true,
+                Checked = false
+            };
+            previewTreat050505AsTransparentToolStripMenuItem.CheckedChanged += previewTreat050505AsTransparentToolStripMenuItem_CheckedChanged;
+
+            int darkModeIndex = menuStrip1.Items.IndexOf(darkModeToolStripMenuItem);
+            if (darkModeIndex >= 0)
+                menuStrip1.Items.Insert(darkModeIndex, previewTreat050505AsTransparentToolStripMenuItem);
+            else
+                menuStrip1.Items.Add(previewTreat050505AsTransparentToolStripMenuItem);
+
             bool darkModeEnabled = LoadDarkModeState();
             darkModeToolStripMenuItem.Checked = darkModeEnabled;
             ApplyTheme(darkModeEnabled);
+            UpdatePreviewTransparencyBackground();
 
             recentDirectories = LoadRecentDirectories();
             RefreshRecentDirectoriesMenu();
@@ -136,6 +155,18 @@ namespace FFVI_tileTool
         private void browseToolStripMenuItem_DropDownOpening(object sender, EventArgs e)
         {
             RefreshRecentDirectoriesMenu();
+        }
+
+        private void previewTreat050505AsTransparentToolStripMenuItem_CheckedChanged(object sender, EventArgs e)
+        {
+            previewTreat050505AsTransparent = previewTreat050505AsTransparentToolStripMenuItem.Checked;
+            UpdatePreviewTransparencyBackground();
+            if (listBox1.SelectedValue is string selectedName && !string.IsNullOrWhiteSpace(selectedName) && st != null)
+            {
+                string selectedPath = st.FirstOrDefault(x => string.Equals(Path.GetFileName(x), selectedName, StringComparison.OrdinalIgnoreCase));
+                if (!string.IsNullOrWhiteSpace(selectedPath) && File.Exists(selectedPath))
+                    RenderImage(selectedPath);
+            }
         }
 
         private void recentDirectoryToolStripMenuItem_Click(object sender, EventArgs e)
@@ -1019,7 +1050,50 @@ namespace FFVI_tileTool
             ApplyThemeToControlTree(this, background, surface, foreground, darkMode);
             ApplyThemeToMenu(menuStrip1, surface, foreground);
             ApplyTitleBarTheme(darkMode);
+            UpdatePreviewTransparencyBackground();
             Invalidate(true);
+        }
+
+        private static Bitmap CreateCheckerboardTile(System.Drawing.Color first, System.Drawing.Color second)
+        {
+            const int cellSize = 8;
+            Bitmap tile = new Bitmap(cellSize * 2, cellSize * 2, PixelFormat.Format32bppArgb);
+            using (Graphics g = Graphics.FromImage(tile))
+            using (SolidBrush firstBrush = new SolidBrush(first))
+            using (SolidBrush secondBrush = new SolidBrush(second))
+            {
+                g.FillRectangle(firstBrush, 0, 0, tile.Width, tile.Height);
+                g.FillRectangle(secondBrush, 0, 0, cellSize, cellSize);
+                g.FillRectangle(secondBrush, cellSize, cellSize, cellSize, cellSize);
+            }
+
+            return tile;
+        }
+
+        private void UpdatePreviewTransparencyBackground()
+        {
+            if (!previewTreat050505AsTransparent)
+            {
+                pictureBox1.BackgroundImage = null;
+                pictureBox2.BackgroundImage = null;
+                previewCheckerBackgroundBitmap?.Dispose();
+                previewCheckerBackgroundBitmap = null;
+                return;
+            }
+
+            bool darkMode = darkModeToolStripMenuItem.Checked;
+            System.Drawing.Color a = darkMode ? System.Drawing.Color.FromArgb(62, 62, 66) : System.Drawing.Color.FromArgb(236, 236, 236);
+            System.Drawing.Color b = darkMode ? System.Drawing.Color.FromArgb(78, 78, 84) : System.Drawing.Color.FromArgb(216, 216, 216);
+
+            Bitmap oldTile = previewCheckerBackgroundBitmap;
+            previewCheckerBackgroundBitmap = CreateCheckerboardTile(a, b);
+
+            pictureBox1.BackgroundImage = previewCheckerBackgroundBitmap;
+            pictureBox1.BackgroundImageLayout = ImageLayout.Tile;
+            pictureBox2.BackgroundImage = previewCheckerBackgroundBitmap;
+            pictureBox2.BackgroundImageLayout = ImageLayout.Tile;
+
+            oldTile?.Dispose();
         }
 
         private void ApplyTitleBarTheme(bool darkMode)
@@ -1396,6 +1470,8 @@ namespace FFVI_tileTool
             Text = $"{DefaultWindowTitle} - {relativePath}";
         }
 
+        private const bool SectionImageRowsAreBottomUp = true;
+
         private static Bitmap BuildIndexedBitmap(byte[] imageBuffer, byte[] paletteBuffer, int width, int height)
         {
             Bitmap bitmap = new Bitmap(width, height, PixelFormat.Format8bppIndexed);
@@ -1411,10 +1487,100 @@ namespace FFVI_tileTool
             bitmap.Palette = palette;
 
             BitmapData bitmapData = bitmap.LockBits(new Rectangle(0, 0, bitmap.Width, bitmap.Height), ImageLockMode.WriteOnly, PixelFormat.Format8bppIndexed);
-            Marshal.Copy(imageBuffer, 0, bitmapData.Scan0, imageBuffer.Length);
-            bitmap.UnlockBits(bitmapData);
+            try
+            {
+                IntPtr topRowPointer = GetTopRowPointer(bitmapData, height);
+                int rowStep = -bitmapData.Stride;
+                for (int y = 0; y < height; y++)
+                {
+                    int sourceY = SectionImageRowsAreBottomUp ? (height - 1 - y) : y;
+                    IntPtr destinationRow = IntPtr.Add(topRowPointer, y * rowStep);
+                    Marshal.Copy(imageBuffer, sourceY * width, destinationRow, width);
+                }
+            }
+            finally
+            {
+                bitmap.UnlockBits(bitmapData);
+            }
+
+            bitmap.RotateFlip(RotateFlipType.RotateNoneFlipY);
 
             return bitmap;
+        }
+
+        private static IntPtr GetTopRowPointer(BitmapData bitmapData, int height)
+        {
+            if (bitmapData.Stride < 0)
+                return bitmapData.Scan0;
+
+            return IntPtr.Add(bitmapData.Scan0, bitmapData.Stride * (height - 1));
+        }
+
+        private Bitmap BuildPreviewBitmap(Bitmap source)
+        {
+            if (source == null)
+                return null;
+
+            if (!previewTreat050505AsTransparent)
+                return (Bitmap)source.Clone();
+
+            bool[] transparentIndex = new bool[256];
+            bool hasTransparentIndices = false;
+            Color[] entries = source.Palette.Entries;
+            for (int i = 0; i < entries.Length && i < 256; i++)
+            {
+                Color c = entries[i];
+                if (c.R == 5 && c.G == 5 && c.B == 5)
+                {
+                    transparentIndex[i] = true;
+                    hasTransparentIndices = true;
+                }
+            }
+
+            if (!hasTransparentIndices)
+                return (Bitmap)source.Clone();
+
+            Bitmap preview = new Bitmap(source.Width, source.Height, PixelFormat.Format32bppArgb);
+            Rectangle rect = new Rectangle(0, 0, source.Width, source.Height);
+            BitmapData sourceData = source.LockBits(rect, ImageLockMode.ReadOnly, PixelFormat.Format8bppIndexed);
+            BitmapData previewData = preview.LockBits(rect, ImageLockMode.WriteOnly, PixelFormat.Format32bppArgb);
+            try
+            {
+                IntPtr sourceTopRow = GetTopRowPointer(sourceData, source.Height);
+                IntPtr previewTopRow = GetTopRowPointer(previewData, source.Height);
+                int sourceRowStep = -sourceData.Stride;
+                int previewRowStep = -previewData.Stride;
+
+                byte[] sourceRow = new byte[source.Width];
+                byte[] previewRow = new byte[source.Width * 4];
+
+                for (int y = 0; y < source.Height; y++)
+                {
+                    IntPtr sourceRowPtr = IntPtr.Add(sourceTopRow, y * sourceRowStep);
+                    IntPtr previewRowPtr = IntPtr.Add(previewTopRow, y * previewRowStep);
+
+                    Marshal.Copy(sourceRowPtr, sourceRow, 0, source.Width);
+                    for (int x = 0; x < source.Width; x++)
+                    {
+                        int index = sourceRow[x];
+                        Color color = index < entries.Length ? entries[index] : Color.Black;
+                        int outOffset = x * 4;
+                        previewRow[outOffset + 0] = color.B;
+                        previewRow[outOffset + 1] = color.G;
+                        previewRow[outOffset + 2] = color.R;
+                        previewRow[outOffset + 3] = transparentIndex[index] ? (byte)0 : (byte)255;
+                    }
+
+                    Marshal.Copy(previewRow, 0, previewRowPtr, previewRow.Length);
+                }
+            }
+            finally
+            {
+                source.UnlockBits(sourceData);
+                preview.UnlockBits(previewData);
+            }
+
+            return preview;
         }
 
         private static void LoadSectionBitmaps(string filePath, out Bitmap firstSection, out Bitmap secondSection)
@@ -1448,21 +1614,29 @@ namespace FFVI_tileTool
 
         private void RenderImage(string file)
         {
-            Bitmap oldFirst = pictureBox1.Image as Bitmap;
-            Bitmap oldSecond = pictureBox2.Image as Bitmap;
+            Bitmap oldFirstPreview = pictureBox1.Image as Bitmap;
+            Bitmap oldSecondPreview = pictureBox2.Image as Bitmap;
+            Bitmap oldFirstSource = currentSection1SourceBitmap;
+            Bitmap oldSecondSource = currentSection2SourceBitmap;
 
             LoadSectionBitmaps(file, out Bitmap firstSection, out Bitmap secondSection);
             UpdatePaletteInfo(file);
 
+            currentSection1SourceBitmap = firstSection;
+            currentSection2SourceBitmap = secondSection;
+
+            Bitmap firstPreview = BuildPreviewBitmap(firstSection);
+
             pictureBox1.Size = firstSection.Size;
-            pictureBox1.Image = firstSection;
+            pictureBox1.Image = firstPreview;
             panel1.AutoScrollMinSize = firstSection.Size;
 
             if (secondSection != null)
             {
+                Bitmap secondPreview = BuildPreviewBitmap(secondSection);
                 pictureBox2.Size = secondSection.Size;
                 panel2.AutoScrollMinSize = secondSection.Size;
-                pictureBox2.Image = secondSection;
+                pictureBox2.Image = secondPreview;
             }
             else
             {
@@ -1471,18 +1645,20 @@ namespace FFVI_tileTool
                 pictureBox2.Image = null;
             }
 
-            oldFirst?.Dispose();
-            oldSecond?.Dispose();
+            oldFirstPreview?.Dispose();
+            oldSecondPreview?.Dispose();
+            oldFirstSource?.Dispose();
+            oldSecondSource?.Dispose();
         }
 
         private void button1_Click(object sender, EventArgs e)
         {
-            ExportImage(pictureBox1.Image, $"{listBox1.SelectedValue}_Section1");
+            ExportImage(currentSection1SourceBitmap, $"{listBox1.SelectedValue}_Section1");
         }
 
         private void button4_Click(object sender, EventArgs e)
         {
-            ExportImage(pictureBox2.Image, $"{listBox1.SelectedValue}_Section2");
+            ExportImage(currentSection2SourceBitmap, $"{listBox1.SelectedValue}_Section2");
         }
 
         private void ExportImage(Image image, string defaultBaseFileName)
@@ -1703,16 +1879,15 @@ namespace FFVI_tileTool
             BitmapData bmpData = bmp.LockBits(new Rectangle(0, 0, bmp.Width, bmp.Height), ImageLockMode.ReadOnly, PixelFormat.Format8bppIndexed);
             try
             {
-                int stride = Math.Abs(bmpData.Stride);
-                byte[] rowBuffer = new byte[stride * bmp.Height];
-                Marshal.Copy(bmpData.Scan0, rowBuffer, 0, rowBuffer.Length);
-
                 pixelBuffer = new byte[bmp.Width * bmp.Height];
+                IntPtr topRowPointer = GetTopRowPointer(bmpData, bmp.Height);
+                int rowStep = -bmpData.Stride;
                 for (int y = 0; y < bmp.Height; y++)
                 {
-                    int sourceOffset = y * stride;
-                    int targetOffset = y * bmp.Width;
-                    Buffer.BlockCopy(rowBuffer, sourceOffset, pixelBuffer, targetOffset, bmp.Width);
+                    int targetY = SectionImageRowsAreBottomUp ? (bmp.Height - 1 - y) : y;
+                    int targetOffset = targetY * bmp.Width;
+                    IntPtr sourceRow = IntPtr.Add(topRowPointer, y * rowStep);
+                    Marshal.Copy(sourceRow, pixelBuffer, targetOffset, bmp.Width);
                 }
             }
             finally
