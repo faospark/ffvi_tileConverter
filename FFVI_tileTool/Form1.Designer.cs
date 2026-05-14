@@ -434,10 +434,10 @@ namespace FFVI_tileTool
             // 
             this.flowLayoutPanel1.Controls.Add(this.groupBox1);
             this.flowLayoutPanel1.Controls.Add(this.groupBox2);
-            this.flowLayoutPanel1.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.flowLayoutPanel1.Dock = System.Windows.Forms.DockStyle.Left;
             this.flowLayoutPanel1.Location = new System.Drawing.Point(0, 0);
             this.flowLayoutPanel1.Name = "flowLayoutPanel1";
-            this.flowLayoutPanel1.Size = new System.Drawing.Size(570, 102);
+            this.flowLayoutPanel1.Size = new System.Drawing.Size(1094, 102);
             this.flowLayoutPanel1.TabIndex = 0;
             // 
             // groupBox1
@@ -447,7 +447,7 @@ namespace FFVI_tileTool
             this.groupBox1.Controls.Add(this.button1);
             this.groupBox1.Location = new System.Drawing.Point(3, 3);
             this.groupBox1.Name = "groupBox1";
-            this.groupBox1.Size = new System.Drawing.Size(564, 50);
+            this.groupBox1.Size = new System.Drawing.Size(537, 50);
             this.groupBox1.TabIndex = 2;
             this.groupBox1.TabStop = false;
             this.groupBox1.Text = "I/O controls Section 1";
@@ -489,7 +489,7 @@ namespace FFVI_tileTool
             this.groupBox2.Controls.Add(this.button4);
             this.groupBox2.Location = new System.Drawing.Point(3, 59);
             this.groupBox2.Name = "groupBox2";
-            this.groupBox2.Size = new System.Drawing.Size(564, 50);
+            this.groupBox2.Size = new System.Drawing.Size(537, 50);
             this.groupBox2.TabIndex = 3;
             this.groupBox2.TabStop = false;
             this.groupBox2.Text = "I/O controls Section 2";
