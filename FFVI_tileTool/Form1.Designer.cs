@@ -106,7 +106,6 @@ namespace FFVI_tileTool
             this.browseAndMassExportToolStripMenuItem,
             this.massImportToolStripMenuItem,
             this.settingsToolStripMenuItem,
-            this.darkModeToolStripMenuItem,
             this.aboutToolStripMenuItem});
             this.menuStrip1.Location = new System.Drawing.Point(0, 0);
             this.menuStrip1.Name = "menuStrip1";
@@ -168,7 +167,8 @@ namespace FFVI_tileTool
             // settingsToolStripMenuItem
             //
             this.settingsToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.previewTreat050505AsTransparentToolStripMenuItem});
+            this.previewTreat050505AsTransparentToolStripMenuItem,
+            this.darkModeToolStripMenuItem});
             this.settingsToolStripMenuItem.Name = "settingsToolStripMenuItem";
             this.settingsToolStripMenuItem.Size = new System.Drawing.Size(61, 20);
             this.settingsToolStripMenuItem.Text = "Settings";
@@ -238,7 +238,6 @@ namespace FFVI_tileTool
             // 
             // darkModeToolStripMenuItem
             // 
-            this.darkModeToolStripMenuItem.Alignment = System.Windows.Forms.ToolStripItemAlignment.Right;
             this.darkModeToolStripMenuItem.CheckOnClick = true;
             this.darkModeToolStripMenuItem.Name = "darkModeToolStripMenuItem";
             this.darkModeToolStripMenuItem.Size = new System.Drawing.Size(80, 20);

@@ -1803,7 +1803,9 @@ namespace FFVI_tileTool
 
         private void button1_Click(object sender, EventArgs e)
         {
-            ExportImage(currentSection1SourceBitmap, $"{listBox1.SelectedValue}_Section1");
+            string selectedFile = listBox1.SelectedValue as string;
+            string fileBase = Path.GetFileNameWithoutExtension(selectedFile);
+            ExportImage(currentSection1SourceBitmap, $"{fileBase}_Section1");
         }
 
         private void previewSection1ExportImageToolStripMenuItem_Click(object sender, EventArgs e)
@@ -1813,7 +1815,9 @@ namespace FFVI_tileTool
 
         private void button4_Click(object sender, EventArgs e)
         {
-            ExportImage(currentSection2SourceBitmap, $"{listBox1.SelectedValue}_Section2");
+            string selectedFile = listBox1.SelectedValue as string;
+            string fileBase = Path.GetFileNameWithoutExtension(selectedFile);
+            ExportImage(currentSection2SourceBitmap, $"{fileBase}_Section2");
         }
 
         private void previewSection2ExportImageToolStripMenuItem_Click(object sender, EventArgs e)
