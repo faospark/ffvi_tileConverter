@@ -38,6 +38,8 @@ namespace FFVI_tileTool
             this.createBackupToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.browseAndMassExportToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.massImportToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.settingsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.previewTreat050505AsTransparentToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.filtersToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.filterOffToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.filterSnowTilesToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -102,6 +104,7 @@ namespace FFVI_tileTool
             this.createBackupToolStripMenuItem,
             this.browseAndMassExportToolStripMenuItem,
             this.massImportToolStripMenuItem,
+            this.settingsToolStripMenuItem,
             this.darkModeToolStripMenuItem,
             this.aboutToolStripMenuItem});
             this.menuStrip1.Location = new System.Drawing.Point(0, 0);
@@ -160,9 +163,25 @@ namespace FFVI_tileTool
             this.massImportToolStripMenuItem.Size = new System.Drawing.Size(84, 20);
             this.massImportToolStripMenuItem.Text = "Mass Import";
             this.massImportToolStripMenuItem.Click += new System.EventHandler(this.massImportToolStripMenuItem_Click);
-            // 
+            //
+            // settingsToolStripMenuItem
+            //
+            this.settingsToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.previewTreat050505AsTransparentToolStripMenuItem});
+            this.settingsToolStripMenuItem.Name = "settingsToolStripMenuItem";
+            this.settingsToolStripMenuItem.Size = new System.Drawing.Size(61, 20);
+            this.settingsToolStripMenuItem.Text = "Settings";
+            //
+            // previewTreat050505AsTransparentToolStripMenuItem
+            //
+            this.previewTreat050505AsTransparentToolStripMenuItem.CheckOnClick = true;
+            this.previewTreat050505AsTransparentToolStripMenuItem.Name = "previewTreat050505AsTransparentToolStripMenuItem";
+            this.previewTreat050505AsTransparentToolStripMenuItem.Size = new System.Drawing.Size(299, 22);
+            this.previewTreat050505AsTransparentToolStripMenuItem.Text = "Preview 05/05/05 As Transparent";
+            this.previewTreat050505AsTransparentToolStripMenuItem.CheckedChanged += new System.EventHandler(this.previewTreat050505AsTransparentToolStripMenuItem_CheckedChanged);
+            //
             // filtersToolStripMenuItem
-            // 
+            //
             this.filtersToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.filterOffToolStripMenuItem,
             this.filterSnowTilesToolStripMenuItem,
@@ -466,7 +485,7 @@ namespace FFVI_tileTool
             // 
             // buttonSection1PaletteInfo
             // 
-            this.buttonSection1PaletteInfo.Location = new System.Drawing.Point(378, 19);
+            this.buttonSection1PaletteInfo.Location = new System.Drawing.Point(336, 19);
             this.buttonSection1PaletteInfo.Name = "buttonSection1PaletteInfo";
             this.buttonSection1PaletteInfo.Size = new System.Drawing.Size(150, 24);
             this.buttonSection1PaletteInfo.TabIndex = 2;
@@ -508,7 +527,7 @@ namespace FFVI_tileTool
             // 
             // buttonSection2PaletteInfo
             // 
-            this.buttonSection2PaletteInfo.Location = new System.Drawing.Point(378, 19);
+            this.buttonSection2PaletteInfo.Location = new System.Drawing.Point(336, 19);
             this.buttonSection2PaletteInfo.Name = "buttonSection2PaletteInfo";
             this.buttonSection2PaletteInfo.Size = new System.Drawing.Size(150, 24);
             this.buttonSection2PaletteInfo.TabIndex = 2;
@@ -606,6 +625,7 @@ namespace FFVI_tileTool
         private System.Windows.Forms.Button button2;
         private System.Windows.Forms.ToolStripMenuItem browseAndMassExportToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem massImportToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem settingsToolStripMenuItem;
         private System.Windows.Forms.GroupBox groupBox1;
         private System.Windows.Forms.GroupBox groupBox2;
         private System.Windows.Forms.Button button3;

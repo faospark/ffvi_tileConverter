@@ -38,6 +38,7 @@ namespace FFVI_tileTool
         private const string RecentDirectoriesStateName = "recent-map-directories.txt";
         private const string DarkModeStateName = "dark-mode.txt";
         private const string BackupReminderStateName = "backup-reminder-shown.txt";
+        private const string Preview050505SettingName = "preview-050505.txt";
         private const string DefaultWindowTitle = "FFVI Old Tile Tool";
         private const int MaxRecentDirectories = 8;
 
@@ -95,24 +96,13 @@ namespace FFVI_tileTool
             comboBoxFileFilter.DrawItem += comboBoxFileFilter_DrawItem;
             comboBoxFileFilter.SelectedIndex = 0;
 
-            previewTreat050505AsTransparentToolStripMenuItem = new ToolStripMenuItem("Preview 05/05/05 As Transparent")
-            {
-                CheckOnClick = true,
-                Checked = false
-            };
-            previewTreat050505AsTransparentToolStripMenuItem.CheckedChanged += previewTreat050505AsTransparentToolStripMenuItem_CheckedChanged;
-
-            int darkModeIndex = menuStrip1.Items.IndexOf(darkModeToolStripMenuItem);
-
-            if (darkModeIndex >= 0)
-                menuStrip1.Items.Insert(darkModeIndex, previewTreat050505AsTransparentToolStripMenuItem);
-            else
-                menuStrip1.Items.Add(previewTreat050505AsTransparentToolStripMenuItem);
-
             bool darkModeEnabled = LoadDarkModeState();
             darkModeToolStripMenuItem.Checked = darkModeEnabled;
             ApplyTheme(darkModeEnabled);
             UpdatePreviewTransparencyBackground();
+
+            bool preview050505Enabled = LoadPreview050505State();
+            previewTreat050505AsTransparentToolStripMenuItem.Checked = preview050505Enabled;
 
             recentDirectories = LoadRecentDirectories();
             RefreshRecentDirectoriesMenu();
@@ -134,37 +124,80 @@ namespace FFVI_tileTool
             if (!string.IsNullOrWhiteSpace(lastOpenedFile) && File.Exists(lastOpenedFile))
                 initialDirectory = Path.GetDirectoryName(lastOpenedFile);
 
-            string selectedFile;
-            using (OpenFileDialog openFileDialog = new OpenFileDialog()
+            using (OpenFileDialog dialog = new OpenFileDialog
             {
-                Title = "Select map*.bin file",
-                Filter = "Map files (map*.bin)|map*.bin|BIN files (*.bin)|*.bin|All files (*.*)|*.*",
-                CheckFileExists = true,
-                CheckPathExists = true,
-                ValidateNames = true,
-                Multiselect = false,
-                InitialDirectory = initialDirectory
+                Title = "Select folder containing map files",
+                InitialDirectory = initialDirectory,
+                FileName = "Select Folder",
+                ValidateNames = false,
+                CheckFileExists = false,
+                CheckPathExists = true
             })
             {
-                if (openFileDialog.ShowDialog() != DialogResult.OK) return;
+                if (dialog.ShowDialog() != DialogResult.OK) return;
 
-                selectedFile = openFileDialog.FileName;
-                if (string.IsNullOrWhiteSpace(selectedFile) || !File.Exists(selectedFile)) return;
+                string selectedFolder = Path.GetDirectoryName(dialog.FileName);
+                if (string.IsNullOrWhiteSpace(selectedFolder) || !Directory.Exists(selectedFolder)) return;
+
+                LoadMapFilesFromFolder(selectedFolder, null);
+
+                if (!EnsureMapBinFilesOrOfferDecompression(selectedFolder))
+                {
+                    ShowAppMessage("No map*.bin files found in the selected folder.", "Browse", MessageBoxIcon.Warning);
+                    return;
+                }
+
+                string firstMapFile = Directory.EnumerateFiles(selectedFolder, "map*.bin").FirstOrDefault();
+                if (!string.IsNullOrWhiteSpace(firstMapFile))
+                    SaveLastOpenedFile(firstMapFile);
+                AddRecentDirectory(selectedFolder);
             }
+        }
 
-            string selectedFolder = Path.GetDirectoryName(selectedFile);
-            if (string.IsNullOrWhiteSpace(selectedFolder) || !Directory.Exists(selectedFolder)) return;
+        [DllImport("shell32.dll", SetLastError = true)]
+        private static extern IntPtr SHBrowseForFolder(ref BROWSEINFO lbpi);
 
-            LoadMapFilesFromFolder(selectedFolder, selectedFile);
+        [DllImport("shell32.dll", SetLastError = true)]
+        private static extern bool SHGetPathFromIDList(IntPtr pidl, System.Text.StringBuilder pszPath);
 
-            if (!EnsureMapBinFilesOrOfferDecompression(selectedFolder))
+        [StructLayout(LayoutKind.Sequential)]
+        private struct BROWSEINFO
+        {
+            public IntPtr hwndOwner;
+            public IntPtr pidlRoot;
+            public IntPtr pszDisplayName;
+            [MarshalAs(UnmanagedType.LPTStr)]
+            public string lpszTitle;
+            public uint ulFlags;
+            public IntPtr lpfn;
+            public IntPtr lParam;
+            public int iImage;
+        }
+
+        private string PickModernFolder()
+        {
+            try
             {
-                ShowAppMessage("No map*.bin files found in the selected folder.", "Browse", MessageBoxIcon.Warning);
-                return;
-            }
+                var bi = new BROWSEINFO();
+                bi.hwndOwner = Handle;
+                bi.lpszTitle = "Select folder containing map files";
+                bi.ulFlags = 0x0040 | 0x0001; // BIF_RETURNONLYFSDIRS | BIF_USENEWUI (modern style)
 
-            SaveLastOpenedFile(selectedFile);
-            AddRecentDirectory(selectedFolder);
+                IntPtr pidl = SHBrowseForFolder(ref bi);
+
+                if (pidl != IntPtr.Zero)
+                {
+                    var sb = new System.Text.StringBuilder(260);
+                    SHGetPathFromIDList(pidl, sb);
+                    Marshal.FreeCoTaskMem(pidl);
+                    return sb.ToString();
+                }
+                return null;
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         private void browseToolStripMenuItem_DropDownOpening(object sender, EventArgs e)
@@ -175,6 +208,7 @@ namespace FFVI_tileTool
         private void previewTreat050505AsTransparentToolStripMenuItem_CheckedChanged(object sender, EventArgs e)
         {
             previewTreat050505AsTransparent = previewTreat050505AsTransparentToolStripMenuItem.Checked;
+            SavePreview050505State(previewTreat050505AsTransparent);
             UpdatePreviewTransparencyBackground();
             if (listBox1.SelectedValue is string selectedName && !string.IsNullOrWhiteSpace(selectedName) && st != null)
             {
@@ -777,6 +811,11 @@ namespace FFVI_tileTool
             return Path.Combine(Application.UserAppDataPath, DarkModeStateName);
         }
 
+        private string GetPreview050505StateFilePath()
+        {
+            return Path.Combine(Application.UserAppDataPath, Preview050505SettingName);
+        }
+
         private string GetBackupReminderStateFilePath()
         {
             return Path.Combine(Application.UserAppDataPath, BackupReminderStateName);
@@ -1072,6 +1111,34 @@ namespace FFVI_tileTool
             }
         }
 
+        private void SavePreview050505State(bool enabled)
+        {
+            try
+            {
+                Directory.CreateDirectory(Application.UserAppDataPath);
+                File.WriteAllText(GetPreview050505StateFilePath(), enabled ? "1" : "0");
+            }
+            catch
+            {
+                // Non-fatal: app should still work if state can't be persisted.
+            }
+        }
+
+        private bool LoadPreview050505State()
+        {
+            try
+            {
+                string stateFilePath = GetPreview050505StateFilePath();
+                if (!File.Exists(stateFilePath)) return false;
+
+                string value = File.ReadAllText(stateFilePath).Trim();
+                return value == "1" || value.Equals("true", StringComparison.OrdinalIgnoreCase);
+            }
+            catch
+            {
+                return false;
+            }
+        }
         private void ApplyTheme(bool darkMode)
         {
             GetThemeColors(darkMode, out System.Drawing.Color background, out System.Drawing.Color surface, out System.Drawing.Color foreground);
@@ -1764,38 +1831,19 @@ namespace FFVI_tileTool
 
         private void button2_Click(object sender, EventArgs e)
         {
-            //is 1st Section
             string path = "";
             using (OpenFileDialog ofd = new OpenFileDialog() { Filter = "Image files (*.png;*.bmp)|*.png;*.bmp|PNG files (*.png)|*.png|BMP files (*.bmp)|*.bmp", Multiselect = false })
                 if (ofd.ShowDialog() == DialogResult.OK)
                     path = ofd.FileName;
                 else return;
 
-            Bitmap bmp = new Bitmap(path);
-            if(bmp.PixelFormat != PixelFormat.Format8bppIndexed)
-            {
-                ShowAppMessage("Image is not 8BPP indexed.", "Import warning", MessageBoxIcon.Warning);
-                return;
-            }
-            if(bmp.Height != 512 || bmp.Width != 512)
-            {
-                ShowAppMessage($"Section 1 is always 512x512. You are trying to import {bmp.Width}x{bmp.Height}.", "Import warning", MessageBoxIcon.Warning);
-                return;
-            }
-            BuildGameImportData(bmp, out byte[] palBuffer, out byte[] pixelBuffer);
-            byte[] b = new byte[512 * 512 + 1024];
-            Buffer.BlockCopy(palBuffer, 0, b, 0, 1024);
-            Buffer.BlockCopy(pixelBuffer, 0, b, 1024, 512 * 512);
-
             string filePath = st.Where(x => Path.GetFileName(x) == (string)listBox1.SelectedValue).First();
-            byte[] bb = File.ReadAllBytes(filePath);
-            byte[] originalPalette = ReadPaletteBlock(bb, 0);
-            int Section2PaletteOffset = GetSection2PaletteOffset(bb.Length);
-            int Section1SearchEnd = Section2PaletteOffset >= 0 ? Section2PaletteOffset : bb.Length;
-            List<int> Section1PaletteOffsets = FindPaletteOffsetsInRange(bb, originalPalette, 0, Section1SearchEnd);
-            Buffer.BlockCopy(b, 0, bb, 0, b.Length);
-            ApplyPaletteAtOffsets(bb, Section1PaletteOffsets, palBuffer);
-            File.WriteAllBytes(filePath, bb);
+            if (!TryImportSection1Image(filePath, path, out string error))
+            {
+                ShowAppMessage(error ?? "Import failed.", "Import warning", MessageBoxIcon.Warning);
+                return;
+            }
+
             RenderImage(filePath);
         }
 
@@ -1806,39 +1854,19 @@ namespace FFVI_tileTool
 
         private void button3_Click(object sender, EventArgs e)
         {
-            //2nd Section
             string path = "";
             using (OpenFileDialog ofd = new OpenFileDialog() { Filter = "Image files (*.png;*.bmp)|*.png;*.bmp|PNG files (*.png)|*.png|BMP files (*.bmp)|*.bmp", Multiselect = false })
                 if (ofd.ShowDialog() == DialogResult.OK)
                     path = ofd.FileName;
                 else return;
 
-            Bitmap bmp = new Bitmap(path);
-            if (bmp.PixelFormat != PixelFormat.Format8bppIndexed)
-            {
-                ShowAppMessage("Image is not 8BPP indexed.", "Import warning", MessageBoxIcon.Warning);
-                return;
-            }
-            if (bmp.Width != 512)
-            {
-                ShowAppMessage($"Section 2 is always 512 pixels wide. You are trying to import {bmp.Width}x{bmp.Height}.", "Import warning", MessageBoxIcon.Warning);
-                return;
-            }
-            BuildGameImportData(bmp, out byte[] palBuffer, out byte[] pixelBuffer);
-            byte[] b = new byte[512 * bmp.Height + 1024];
-            Buffer.BlockCopy(palBuffer, 0, b, 0, 1024);
-            Buffer.BlockCopy(pixelBuffer, 0, b, 1024, 512 * bmp.Height);
-            
             string filePath = st.Where(x => Path.GetFileName(x) == (string)listBox1.SelectedValue).First();
-            byte[] bb = File.ReadAllBytes(filePath);
-            //if(bb.Length < 512*512+1024+b.Length + 512*24)
-            //{
-            //    MessageBox.Show("Second Section is too big!");
-            //    return;
-            //}
+            if (!TryImportSection2Image(filePath, path, out string error))
+            {
+                ShowAppMessage(error ?? "Import failed.", "Import warning", MessageBoxIcon.Warning);
+                return;
+            }
 
-            Buffer.BlockCopy(b, 0, bb, bb.Length-0x80400, b.Length);
-            File.WriteAllBytes(filePath, bb);
             RenderImage(filePath);
         }
 
@@ -1861,18 +1889,145 @@ namespace FFVI_tileTool
             return null;
         }
 
+        private static bool TryConvertToIndexed8bpp(Bitmap source, out Bitmap converted, out string error)
+        {
+            converted = null;
+            error = null;
+
+            int width = source.Width;
+            int height = source.Height;
+            Rectangle rect = new Rectangle(0, 0, width, height);
+
+            Bitmap argbSource = null;
+            try
+            {
+                argbSource = source.Clone(rect, PixelFormat.Format32bppArgb);
+
+                byte[] indices = new byte[width * height];
+                Dictionary<int, byte> colorToIndex = new Dictionary<int, byte>();
+                List<Color> paletteEntries = new List<Color>(256);
+
+                BitmapData sourceData = argbSource.LockBits(rect, ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
+                try
+                {
+                    IntPtr topRow = GetTopRowPointer(sourceData, height);
+                    int rowStep = -sourceData.Stride;
+                    byte[] row = new byte[width * 4];
+
+                    for (int y = 0; y < height; y++)
+                    {
+                        IntPtr rowPtr = IntPtr.Add(topRow, y * rowStep);
+                        Marshal.Copy(rowPtr, row, 0, row.Length);
+                        int targetOffset = y * width;
+
+                        for (int x = 0; x < width; x++)
+                        {
+                            int pixelOffset = x * 4;
+                            int b = row[pixelOffset + 0];
+                            int g = row[pixelOffset + 1];
+                            int r = row[pixelOffset + 2];
+                            int a = row[pixelOffset + 3];
+                            int argb = (a << 24) | (r << 16) | (g << 8) | b;
+
+                            if (!colorToIndex.TryGetValue(argb, out byte paletteIndex))
+                            {
+                                if (paletteEntries.Count >= 256)
+                                {
+                                    error = "Image uses more than 256 unique colors and cannot be converted to 8BPP indexed.";
+                                    return false;
+                                }
+
+                                paletteIndex = (byte)paletteEntries.Count;
+                                colorToIndex[argb] = paletteIndex;
+                                paletteEntries.Add(Color.FromArgb(a, r, g, b));
+                            }
+
+                            indices[targetOffset + x] = paletteIndex;
+                        }
+                    }
+                }
+                finally
+                {
+                    argbSource.UnlockBits(sourceData);
+                }
+
+                converted = new Bitmap(width, height, PixelFormat.Format8bppIndexed);
+                ColorPalette palette = converted.Palette;
+                for (int i = 0; i < 256; i++)
+                {
+                    palette.Entries[i] = i < paletteEntries.Count
+                        ? paletteEntries[i]
+                        : Color.FromArgb(255, 0, 0, 0);
+                }
+                converted.Palette = palette;
+
+                BitmapData convertedData = converted.LockBits(rect, ImageLockMode.WriteOnly, PixelFormat.Format8bppIndexed);
+                try
+                {
+                    IntPtr topRow = GetTopRowPointer(convertedData, height);
+                    int rowStep = -convertedData.Stride;
+                    for (int y = 0; y < height; y++)
+                    {
+                        IntPtr rowPtr = IntPtr.Add(topRow, y * rowStep);
+                        Marshal.Copy(indices, y * width, rowPtr, width);
+                    }
+                }
+                finally
+                {
+                    converted.UnlockBits(convertedData);
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                converted?.Dispose();
+                converted = null;
+                error = ex.Message;
+                return false;
+            }
+            finally
+            {
+                argbSource?.Dispose();
+            }
+        }
+
+        private static bool TryLoadImportBitmap8bpp(string imagePath, out Bitmap importBitmap, out string error)
+        {
+            importBitmap = null;
+            error = null;
+
+            Bitmap loaded = null;
+            try
+            {
+                loaded = new Bitmap(imagePath);
+                if (loaded.PixelFormat == PixelFormat.Format8bppIndexed)
+                {
+                    importBitmap = loaded.Clone(new Rectangle(0, 0, loaded.Width, loaded.Height), PixelFormat.Format8bppIndexed);
+                    return true;
+                }
+
+                return TryConvertToIndexed8bpp(loaded, out importBitmap, out error);
+            }
+            catch (Exception ex)
+            {
+                error = ex.Message;
+                return false;
+            }
+            finally
+            {
+                loaded?.Dispose();
+            }
+        }
+
         private bool TryImportSection1Image(string filePath, string imagePath, out string error)
         {
             error = null;
             Bitmap bmp = null;
             try
             {
-                bmp = new Bitmap(imagePath);
-                if (bmp.PixelFormat != PixelFormat.Format8bppIndexed)
-                {
-                    error = "Image is not 8BPP indexed.";
+                if (!TryLoadImportBitmap8bpp(imagePath, out bmp, out error))
                     return false;
-                }
 
                 if (bmp.Width != 512 || bmp.Height != 512)
                 {
@@ -1913,12 +2068,8 @@ namespace FFVI_tileTool
             Bitmap bmp = null;
             try
             {
-                bmp = new Bitmap(imagePath);
-                if (bmp.PixelFormat != PixelFormat.Format8bppIndexed)
-                {
-                    error = "Image is not 8BPP indexed.";
+                if (!TryLoadImportBitmap8bpp(imagePath, out bmp, out error))
                     return false;
-                }
 
                 if (bmp.Width != 512)
                 {
@@ -2126,39 +2277,33 @@ namespace FFVI_tileTool
             if (!string.IsNullOrWhiteSpace(lastOpenedFile) && File.Exists(lastOpenedFile))
                 initialDirectory = Path.GetDirectoryName(lastOpenedFile);
 
-            string selectedFile;
-            using (OpenFileDialog fileDialog = new OpenFileDialog()
+            using (OpenFileDialog dialog = new OpenFileDialog
             {
-                Title = "Select a file from the folder for mass export",
-                Filter = "Map files (map*.bin;map*.bin.gz)|map*.bin;map*.bin.gz|All files (*.*)|*.*",
-                CheckFileExists = true,
-                CheckPathExists = true,
-                ValidateNames = true,
+                Title = "Select folder for mass export",
                 InitialDirectory = initialDirectory,
-                Multiselect = false
+                FileName = "Select Folder",
+                ValidateNames = false,
+                CheckFileExists = false,
+                CheckPathExists = true
             })
             {
-                if (fileDialog.ShowDialog() != DialogResult.OK) return;
+                if (dialog.ShowDialog() != DialogResult.OK) return;
 
-                selectedFile = fileDialog.FileName;
-                if (string.IsNullOrWhiteSpace(selectedFile) || !File.Exists(selectedFile)) return;
-            }
+                string sourceFolder = Path.GetDirectoryName(dialog.FileName);
+                if (string.IsNullOrWhiteSpace(sourceFolder) || !Directory.Exists(sourceFolder)) return;
 
-            string sourceFolder = Path.GetDirectoryName(selectedFile);
-            if (string.IsNullOrWhiteSpace(sourceFolder) || !Directory.Exists(sourceFolder)) return;
+                string[] mapFiles = Directory.GetFiles(sourceFolder, "map*.bin", SearchOption.TopDirectoryOnly)
+                    .OrderBy(Path.GetFileName)
+                    .ToArray();
 
-            string[] mapFiles = Directory.GetFiles(sourceFolder, "map*.bin", SearchOption.TopDirectoryOnly)
-                .OrderBy(Path.GetFileName)
-                .ToArray();
-
-            if (mapFiles.Length == 0)
-            {
-                string[] gzipFiles = GetMapGzipFiles(sourceFolder);
-                if (gzipFiles.Length == 0)
+                if (mapFiles.Length == 0)
                 {
-                    ShowAppMessage("No map*.bin files found in the selected folder.", "Mass export", MessageBoxIcon.Warning);
-                    return;
-                }
+                    string[] gzipFiles = GetMapGzipFiles(sourceFolder);
+                    if (gzipFiles.Length == 0)
+                    {
+                        ShowAppMessage("No map*.bin files found in the selected folder.", "Mass export", MessageBoxIcon.Warning);
+                        return;
+                    }
 
                 DialogResult decision = ShowAppMessageWithActions(
                     "No map*.bin files were found, but map*.bin.gz files were detected.\n\nDo you want to decompress them now and continue mass export?",
@@ -2302,35 +2447,17 @@ namespace FFVI_tileTool
                             failedCount == 0 ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
                     }
             }
+            }
         }
 
         private void massImportToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            string lastOpenedFile = LoadLastOpenedFile();
-            string initialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-            if (!string.IsNullOrWhiteSpace(lastOpenedFile) && File.Exists(lastOpenedFile))
-                initialDirectory = Path.GetDirectoryName(lastOpenedFile);
-
-            string selectedFile;
-            using (OpenFileDialog fileDialog = new OpenFileDialog()
+            string targetFolder = GetCurrentMapFolder();
+            if (string.IsNullOrWhiteSpace(targetFolder) || !Directory.Exists(targetFolder))
             {
-                Title = "Select a file from the target folder for mass import",
-                Filter = "Map files (map*.bin)|map*.bin|All files (*.*)|*.*",
-                CheckFileExists = true,
-                CheckPathExists = true,
-                ValidateNames = true,
-                InitialDirectory = initialDirectory,
-                Multiselect = false
-            })
-            {
-                if (fileDialog.ShowDialog() != DialogResult.OK) return;
-
-                selectedFile = fileDialog.FileName;
-                if (string.IsNullOrWhiteSpace(selectedFile) || !File.Exists(selectedFile)) return;
+                ShowAppMessage("No working map folder is loaded yet. Please use Browse first.", "Mass import", MessageBoxIcon.Warning);
+                return;
             }
-
-            string targetFolder = Path.GetDirectoryName(selectedFile);
-            if (string.IsNullOrWhiteSpace(targetFolder) || !Directory.Exists(targetFolder)) return;
 
             string[] mapFiles = Directory.GetFiles(targetFolder, "map*.bin", SearchOption.TopDirectoryOnly)
                 .OrderBy(Path.GetFileName)
@@ -2344,13 +2471,19 @@ namespace FFVI_tileTool
 
             string defaultImportFolder = Path.Combine(targetFolder, "mass_export");
             string importFolder;
-            using (FolderBrowserDialog folderDialog = new FolderBrowserDialog())
+            using (OpenFileDialog importFolderDialog = new OpenFileDialog()
             {
-                folderDialog.Description = "Select folder containing *_Section1 / *_Section2 PNG or BMP files";
-                folderDialog.SelectedPath = Directory.Exists(defaultImportFolder) ? defaultImportFolder : targetFolder;
-
-                if (folderDialog.ShowDialog(this) != DialogResult.OK) return;
-                importFolder = folderDialog.SelectedPath;
+                Title = "Select folder containing *_Section1 / *_Section2 PNG or BMP files",
+                InitialDirectory = Directory.Exists(defaultImportFolder) ? defaultImportFolder : targetFolder,
+                FileName = "Select Folder",
+                ValidateNames = false,
+                CheckFileExists = false,
+                CheckPathExists = true,
+                Multiselect = false
+            })
+            {
+                if (importFolderDialog.ShowDialog(this) != DialogResult.OK) return;
+                importFolder = Path.GetDirectoryName(importFolderDialog.FileName);
             }
 
             if (string.IsNullOrWhiteSpace(importFolder) || !Directory.Exists(importFolder))
@@ -2409,6 +2542,7 @@ namespace FFVI_tileTool
                 int updatedFiles = 0;
                 int skippedFiles = 0;
                 int failedOperations = 0;
+                List<string> failureEntries = new List<string>();
                 bool cancelled = false;
 
                 for (int i = 0; i < mapFiles.Length; i++)
@@ -2439,7 +2573,7 @@ namespace FFVI_tileTool
 
                     if (section1Image != null)
                     {
-                        if (TryImportSection1Image(filePath, section1Image, out string _))
+                        if (TryImportSection1Image(filePath, section1Image, out string section1Error))
                         {
                             importedSection1++;
                             fileUpdated = true;
@@ -2447,12 +2581,13 @@ namespace FFVI_tileTool
                         else
                         {
                             failedOperations++;
+                            failureEntries.Add($"{Path.GetFileName(filePath)} | Section1 | {section1Error ?? "Unknown error"}");
                         }
                     }
 
                     if (section2Image != null)
                     {
-                        if (TryImportSection2Image(filePath, section2Image, out string _))
+                        if (TryImportSection2Image(filePath, section2Image, out string section2Error))
                         {
                             importedSection2++;
                             fileUpdated = true;
@@ -2460,6 +2595,7 @@ namespace FFVI_tileTool
                         else
                         {
                             failedOperations++;
+                            failureEntries.Add($"{Path.GetFileName(filePath)} | Section2 | {section2Error ?? "Unknown error"}");
                         }
                     }
 
@@ -2473,6 +2609,28 @@ namespace FFVI_tileTool
                 if (!string.IsNullOrWhiteSpace(selectedMap) && File.Exists(selectedMap))
                     RenderImage(selectedMap);
 
+                string logPath = null;
+                if (failureEntries.Count > 0)
+                {
+                    try
+                    {
+                        string logName = $"mass_import_failures_{DateTime.Now:yyyyMMdd_HHmmss}.log";
+                        logPath = Path.Combine(targetFolder, logName);
+                        string logBody =
+                            "Mass import failure log" + Environment.NewLine +
+                            $"Generated: {DateTime.Now:yyyy-MM-dd HH:mm:ss}" + Environment.NewLine +
+                            $"Working folder: {targetFolder}" + Environment.NewLine +
+                            $"Import folder: {importFolder}" + Environment.NewLine +
+                            Environment.NewLine +
+                            string.Join(Environment.NewLine, failureEntries);
+                        File.WriteAllText(logPath, logBody, Encoding.UTF8);
+                    }
+                    catch
+                    {
+                        logPath = null;
+                    }
+                }
+
                 string summary =
                     $"Mass import {(cancelled ? "cancelled" : "completed")}.\n\n" +
                     $"Updated files: {updatedFiles}\n" +
@@ -2480,7 +2638,8 @@ namespace FFVI_tileTool
                     $"Imported Section 2: {importedSection2}\n" +
                     $"Skipped (no images): {skippedFiles}\n" +
                     $"Failed operations: {failedOperations}\n" +
-                    $"Import folder: {importFolder}";
+                    $"Import folder: {importFolder}" +
+                    (string.IsNullOrWhiteSpace(logPath) ? string.Empty : $"\nFailure log: {logPath}");
 
                 ShowAppMessage(
                     summary,
