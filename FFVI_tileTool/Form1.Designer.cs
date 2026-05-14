@@ -45,6 +45,7 @@ namespace FFVI_tileTool
             this.darkModeToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.aboutToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.splitContainer1 = new System.Windows.Forms.SplitContainer();
+            this.labelFileList = new System.Windows.Forms.Label();
             this.listBox1 = new System.Windows.Forms.ListBox();
             this.fileListContextMenuStrip = new System.Windows.Forms.ContextMenuStrip();
             this.revealInFileExplorerToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -224,6 +225,7 @@ namespace FFVI_tileTool
             // 
             // splitContainer1.Panel1
             // 
+            this.splitContainer1.Panel1.Controls.Add(this.labelFileList);
             this.splitContainer1.Panel1.Controls.Add(this.listBox1);
             // 
             // splitContainer1.Panel2
@@ -233,14 +235,25 @@ namespace FFVI_tileTool
             this.splitContainer1.SplitterDistance = 110;
             this.splitContainer1.TabIndex = 1;
             // 
+            // labelFileList
+            // 
+            this.labelFileList.AutoSize = true;
+            this.labelFileList.Location = new System.Drawing.Point(3, 1);
+            this.labelFileList.Name = "labelFileList";
+            this.labelFileList.Size = new System.Drawing.Size(45, 13);
+            this.labelFileList.TabIndex = 1;
+            this.labelFileList.Text = "File List";
+            // 
             // listBox1
             // 
-            this.listBox1.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.listBox1.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
+            | System.Windows.Forms.AnchorStyles.Left)
+            | System.Windows.Forms.AnchorStyles.Right)));
             this.listBox1.FormattingEnabled = true;
-            this.listBox1.Location = new System.Drawing.Point(0, 0);
+            this.listBox1.Location = new System.Drawing.Point(0, 16);
             this.listBox1.Name = "listBox1";
             this.listBox1.SelectionMode = System.Windows.Forms.SelectionMode.MultiExtended;
-            this.listBox1.Size = new System.Drawing.Size(110, 646);
+            this.listBox1.Size = new System.Drawing.Size(110, 630);
             this.listBox1.TabIndex = 0;
             this.listBox1.ContextMenuStrip = this.fileListContextMenuStrip;
             this.listBox1.SelectedIndexChanged += new System.EventHandler(this.listBox1_SelectedIndexChanged);
@@ -498,6 +511,7 @@ namespace FFVI_tileTool
         private System.Windows.Forms.ToolStripMenuItem darkModeToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem aboutToolStripMenuItem;
         private System.Windows.Forms.SplitContainer splitContainer1;
+        private System.Windows.Forms.Label labelFileList;
         private System.Windows.Forms.ListBox listBox1;
         private System.Windows.Forms.ContextMenuStrip fileListContextMenuStrip;
         private System.Windows.Forms.ToolStripMenuItem revealInFileExplorerToolStripMenuItem;

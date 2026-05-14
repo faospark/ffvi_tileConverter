@@ -90,6 +90,7 @@ namespace FFVI_tileTool
             previewTreat050505AsTransparentToolStripMenuItem.CheckedChanged += previewTreat050505AsTransparentToolStripMenuItem_CheckedChanged;
 
             int darkModeIndex = menuStrip1.Items.IndexOf(darkModeToolStripMenuItem);
+
             if (darkModeIndex >= 0)
                 menuStrip1.Items.Insert(darkModeIndex, previewTreat050505AsTransparentToolStripMenuItem);
             else
@@ -1470,7 +1471,7 @@ namespace FFVI_tileTool
             Text = $"{DefaultWindowTitle} - {relativePath}";
         }
 
-        private const bool SectionImageRowsAreBottomUp = true;
+        private const bool SectionImageRowsAreBottomUp = false;
 
         private static Bitmap BuildIndexedBitmap(byte[] imageBuffer, byte[] paletteBuffer, int width, int height)
         {
@@ -1503,8 +1504,6 @@ namespace FFVI_tileTool
                 bitmap.UnlockBits(bitmapData);
             }
 
-            bitmap.RotateFlip(RotateFlipType.RotateNoneFlipY);
-
             return bitmap;
         }
 
@@ -1522,7 +1521,11 @@ namespace FFVI_tileTool
                 return null;
 
             if (!previewTreat050505AsTransparent)
-                return (Bitmap)source.Clone();
+            {
+                Bitmap upsideDownPreview = (Bitmap)source.Clone();
+                upsideDownPreview.RotateFlip(RotateFlipType.RotateNoneFlipY);
+                return upsideDownPreview;
+            }
 
             bool[] transparentIndex = new bool[256];
             bool hasTransparentIndices = false;
@@ -1538,7 +1541,11 @@ namespace FFVI_tileTool
             }
 
             if (!hasTransparentIndices)
-                return (Bitmap)source.Clone();
+            {
+                Bitmap upsideDownPreview = (Bitmap)source.Clone();
+                upsideDownPreview.RotateFlip(RotateFlipType.RotateNoneFlipY);
+                return upsideDownPreview;
+            }
 
             Bitmap preview = new Bitmap(source.Width, source.Height, PixelFormat.Format32bppArgb);
             Rectangle rect = new Rectangle(0, 0, source.Width, source.Height);
@@ -1579,6 +1586,8 @@ namespace FFVI_tileTool
                 source.UnlockBits(sourceData);
                 preview.UnlockBits(previewData);
             }
+
+            preview.RotateFlip(RotateFlipType.RotateNoneFlipY);
 
             return preview;
         }
