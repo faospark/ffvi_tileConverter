@@ -76,11 +76,24 @@ namespace FFVI_tileTool
         private Bitmap currentSection1SourceBitmap;
         private Bitmap currentSection2SourceBitmap;
         private Bitmap previewCheckerBackgroundBitmap;
+        private bool isSyncingFilterDropdown;
+
         public Form1()
         {
             InitializeComponent();
             Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
             Text = DefaultWindowTitle;
+
+            comboBoxFileFilter.Items.AddRange(new object[]
+            {
+                "All Maps",
+                "Snow Tiles",
+                "Grass Tiles",
+                "Magitek Tiles"
+            });
+            comboBoxFileFilter.DrawMode = DrawMode.OwnerDrawFixed;
+            comboBoxFileFilter.DrawItem += comboBoxFileFilter_DrawItem;
+            comboBoxFileFilter.SelectedIndex = 0;
 
             previewTreat050505AsTransparentToolStripMenuItem = new ToolStripMenuItem("Preview 05/05/05 As Transparent")
             {
@@ -581,6 +594,20 @@ namespace FFVI_tileTool
             filterSnowTilesToolStripMenuItem.Checked = activeMapFilter == MapCategoryFilter.SnowTiles;
             filterGrassTilesToolStripMenuItem.Checked = activeMapFilter == MapCategoryFilter.GrassTiles;
             filterMagitekTilesToolStripMenuItem.Checked = activeMapFilter == MapCategoryFilter.MagitekTiles;
+
+            if (comboBoxFileFilter == null) return;
+
+            int targetIndex = 0;
+            if (activeMapFilter == MapCategoryFilter.SnowTiles) targetIndex = 1;
+            else if (activeMapFilter == MapCategoryFilter.GrassTiles) targetIndex = 2;
+            else if (activeMapFilter == MapCategoryFilter.MagitekTiles) targetIndex = 3;
+
+            if (comboBoxFileFilter.SelectedIndex != targetIndex)
+            {
+                isSyncingFilterDropdown = true;
+                comboBoxFileFilter.SelectedIndex = targetIndex;
+                isSyncingFilterDropdown = false;
+            }
         }
 
         private void SetActiveMapFilter(MapCategoryFilter filter)
@@ -1347,6 +1374,12 @@ namespace FFVI_tileTool
                 listBox.BackColor = surface;
                 listBox.ForeColor = foreground;
                 listBox.BorderStyle = darkMode ? BorderStyle.FixedSingle : BorderStyle.Fixed3D;
+            }
+            else if (control is ComboBox comboBox)
+            {
+                comboBox.BackColor = surface;
+                comboBox.ForeColor = foreground;
+                comboBox.FlatStyle = darkMode ? FlatStyle.Flat : FlatStyle.Standard;
             }
             else if (control is PictureBox pictureBox)
             {
@@ -2476,6 +2509,60 @@ namespace FFVI_tileTool
         private void filterMagitekTilesToolStripMenuItem_Click(object sender, EventArgs e)
         {
             SetActiveMapFilter(MapCategoryFilter.MagitekTiles);
+        }
+
+        private void comboBoxFileFilter_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (isSyncingFilterDropdown) return;
+
+            MapCategoryFilter selectedFilter = MapCategoryFilter.Off;
+            if (comboBoxFileFilter.SelectedIndex == 1)
+                selectedFilter = MapCategoryFilter.SnowTiles;
+            else if (comboBoxFileFilter.SelectedIndex == 2)
+                selectedFilter = MapCategoryFilter.GrassTiles;
+            else if (comboBoxFileFilter.SelectedIndex == 3)
+                selectedFilter = MapCategoryFilter.MagitekTiles;
+
+            if (selectedFilter != activeMapFilter)
+                SetActiveMapFilter(selectedFilter);
+        }
+
+        private void comboBoxFileFilter_DrawItem(object sender, DrawItemEventArgs e)
+        {
+            if (!(sender is ComboBox comboBox)) return;
+
+            bool darkMode = darkModeToolStripMenuItem != null && darkModeToolStripMenuItem.Checked;
+            GetThemeColors(darkMode, out System.Drawing.Color background, out System.Drawing.Color surface, out System.Drawing.Color foreground);
+
+            bool isSelected = (e.State & DrawItemState.Selected) == DrawItemState.Selected;
+            System.Drawing.Color itemBackColor = surface;
+            System.Drawing.Color itemForeColor = foreground;
+
+            if (isSelected)
+            {
+                itemBackColor = darkMode ? System.Drawing.Color.FromArgb(63, 63, 70) : SystemColors.Highlight;
+                itemForeColor = darkMode ? foreground : SystemColors.HighlightText;
+            }
+
+            using (SolidBrush backBrush = new SolidBrush(itemBackColor))
+            using (SolidBrush textBrush = new SolidBrush(itemForeColor))
+            {
+                e.Graphics.FillRectangle(backBrush, e.Bounds);
+
+                if (e.Index >= 0 && e.Index < comboBox.Items.Count)
+                {
+                    string itemText = comboBox.GetItemText(comboBox.Items[e.Index]);
+                    Rectangle textBounds = new Rectangle(e.Bounds.X + 2, e.Bounds.Y + 2, e.Bounds.Width - 4, e.Bounds.Height - 4);
+                    e.Graphics.DrawString(itemText, e.Font, textBrush, textBounds);
+                }
+                else
+                {
+                    Rectangle textBounds = new Rectangle(e.Bounds.X + 2, e.Bounds.Y + 2, e.Bounds.Width - 4, e.Bounds.Height - 4);
+                    e.Graphics.DrawString(comboBox.Text, e.Font, textBrush, textBounds);
+                }
+            }
+
+            e.DrawFocusRectangle();
         }
 
         private void isolateFilteredFilesToolStripMenuItem_Click(object sender, EventArgs e)

@@ -46,6 +46,7 @@ namespace FFVI_tileTool
             this.aboutToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.splitContainer1 = new System.Windows.Forms.SplitContainer();
             this.labelFileList = new System.Windows.Forms.Label();
+            this.comboBoxFileFilter = new System.Windows.Forms.ComboBox();
             this.listBox1 = new System.Windows.Forms.ListBox();
             this.fileListContextMenuStrip = new System.Windows.Forms.ContextMenuStrip();
             this.revealInFileExplorerToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -94,7 +95,6 @@ namespace FFVI_tileTool
             this.createBackupToolStripMenuItem,
             this.browseAndMassExportToolStripMenuItem,
             this.massImportToolStripMenuItem,
-            this.filtersToolStripMenuItem,
             this.darkModeToolStripMenuItem,
             this.aboutToolStripMenuItem});
             this.menuStrip1.Location = new System.Drawing.Point(0, 0);
@@ -226,6 +226,7 @@ namespace FFVI_tileTool
             // splitContainer1.Panel1
             // 
             this.splitContainer1.Panel1.Controls.Add(this.labelFileList);
+            this.splitContainer1.Panel1.Controls.Add(this.comboBoxFileFilter);
             this.splitContainer1.Panel1.Controls.Add(this.listBox1);
             // 
             // splitContainer1.Panel2
@@ -244,16 +245,28 @@ namespace FFVI_tileTool
             this.labelFileList.TabIndex = 1;
             this.labelFileList.Text = "File List";
             // 
+            // comboBoxFileFilter
+            // 
+            this.comboBoxFileFilter.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.comboBoxFileFilter.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.comboBoxFileFilter.FormattingEnabled = true;
+            this.comboBoxFileFilter.Location = new System.Drawing.Point(0, 16);
+            this.comboBoxFileFilter.Name = "comboBoxFileFilter";
+            this.comboBoxFileFilter.Size = new System.Drawing.Size(110, 21);
+            this.comboBoxFileFilter.TabIndex = 2;
+            this.comboBoxFileFilter.SelectedIndexChanged += new System.EventHandler(this.comboBoxFileFilter_SelectedIndexChanged);
+            // 
             // listBox1
             // 
             this.listBox1.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
             | System.Windows.Forms.AnchorStyles.Left)
             | System.Windows.Forms.AnchorStyles.Right)));
             this.listBox1.FormattingEnabled = true;
-            this.listBox1.Location = new System.Drawing.Point(0, 16);
+            this.listBox1.Location = new System.Drawing.Point(0, 40);
             this.listBox1.Name = "listBox1";
             this.listBox1.SelectionMode = System.Windows.Forms.SelectionMode.MultiExtended;
-            this.listBox1.Size = new System.Drawing.Size(110, 630);
+            this.listBox1.Size = new System.Drawing.Size(110, 606);
             this.listBox1.TabIndex = 0;
             this.listBox1.ContextMenuStrip = this.fileListContextMenuStrip;
             this.listBox1.SelectedIndexChanged += new System.EventHandler(this.listBox1_SelectedIndexChanged);
@@ -512,6 +525,7 @@ namespace FFVI_tileTool
         private System.Windows.Forms.ToolStripMenuItem aboutToolStripMenuItem;
         private System.Windows.Forms.SplitContainer splitContainer1;
         private System.Windows.Forms.Label labelFileList;
+        private System.Windows.Forms.ComboBox comboBoxFileFilter;
         private System.Windows.Forms.ListBox listBox1;
         private System.Windows.Forms.ContextMenuStrip fileListContextMenuStrip;
         private System.Windows.Forms.ToolStripMenuItem revealInFileExplorerToolStripMenuItem;
