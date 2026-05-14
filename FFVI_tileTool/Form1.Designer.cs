@@ -45,6 +45,7 @@ namespace FFVI_tileTool
             this.filterSnowTilesToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.filterGrassTilesToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.filterMagitekTilesToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.filterShipDeckTilesToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.isolateFilteredFilesToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.darkModeToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.aboutToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -187,6 +188,7 @@ namespace FFVI_tileTool
             this.filterSnowTilesToolStripMenuItem,
             this.filterGrassTilesToolStripMenuItem,
             this.filterMagitekTilesToolStripMenuItem,
+            this.filterShipDeckTilesToolStripMenuItem,
             this.isolateFilteredFilesToolStripMenuItem});
             this.filtersToolStripMenuItem.Name = "filtersToolStripMenuItem";
             this.filtersToolStripMenuItem.Size = new System.Drawing.Size(50, 20);
@@ -219,6 +221,13 @@ namespace FFVI_tileTool
             this.filterMagitekTilesToolStripMenuItem.Size = new System.Drawing.Size(169, 22);
             this.filterMagitekTilesToolStripMenuItem.Text = "Magitek Tiles";
             this.filterMagitekTilesToolStripMenuItem.Click += new System.EventHandler(this.filterMagitekTilesToolStripMenuItem_Click);
+            // 
+            // filterShipDeckTilesToolStripMenuItem
+            // 
+            this.filterShipDeckTilesToolStripMenuItem.Name = "filterShipDeckTilesToolStripMenuItem";
+            this.filterShipDeckTilesToolStripMenuItem.Size = new System.Drawing.Size(169, 22);
+            this.filterShipDeckTilesToolStripMenuItem.Text = "Ship Deck Tiles";
+            this.filterShipDeckTilesToolStripMenuItem.Click += new System.EventHandler(this.filterShipDeckTilesToolStripMenuItem_Click);
             // 
             // isolateFilteredFilesToolStripMenuItem
             // 
@@ -606,6 +615,7 @@ namespace FFVI_tileTool
         private System.Windows.Forms.ToolStripMenuItem filterSnowTilesToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem filterGrassTilesToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem filterMagitekTilesToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem filterShipDeckTilesToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem isolateFilteredFilesToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem darkModeToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem aboutToolStripMenuItem;

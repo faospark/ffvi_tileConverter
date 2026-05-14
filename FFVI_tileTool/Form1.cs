@@ -22,7 +22,8 @@ namespace FFVI_tileTool
             Off,
             SnowTiles,
             GrassTiles,
-            MagitekTiles
+            MagitekTiles,
+            ShipDeckTiles
         }
 
         private enum IsolateDestinationChoice
@@ -60,6 +61,11 @@ namespace FFVI_tileTool
             "map091.bin", "map117.bin", "map119.bin", "map187.bin", "map220.bin", "map228.bin", "map332.bin"
         };
 
+        private static readonly HashSet<string> ShipDeckTileMaps = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "map011.bin", "map013.bin", "map017.bin", "map215.bin", "map227.bin", "map006.bin", "map010.bin"
+        };
+
         [DllImport("dwmapi.dll", PreserveSig = true)]
         private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int pvAttribute, int cbAttribute);
 
@@ -90,7 +96,8 @@ namespace FFVI_tileTool
                 "All Maps",
                 "Snow Tiles",
                 "Grass Tiles",
-                "Magitek Tiles"
+                "Magitek Tiles",
+                "Ship Deck Tiles"
             });
             comboBoxFileFilter.DrawMode = DrawMode.OwnerDrawFixed;
             comboBoxFileFilter.DrawItem += comboBoxFileFilter_DrawItem;
@@ -598,6 +605,8 @@ namespace FFVI_tileTool
                 query = query.Where(x => GrassTileMaps.Contains(Path.GetFileName(x)));
             else if (activeMapFilter == MapCategoryFilter.MagitekTiles)
                 query = query.Where(x => MagitekTileMaps.Contains(Path.GetFileName(x)));
+            else if (activeMapFilter == MapCategoryFilter.ShipDeckTiles)
+                query = query.Where(x => ShipDeckTileMaps.Contains(Path.GetFileName(x)));
 
             st = query.OrderBy(Path.GetFileName).ToArray();
             string[] fileNames = st.Select(Path.GetFileName).ToArray();
@@ -629,6 +638,7 @@ namespace FFVI_tileTool
             filterSnowTilesToolStripMenuItem.Checked = activeMapFilter == MapCategoryFilter.SnowTiles;
             filterGrassTilesToolStripMenuItem.Checked = activeMapFilter == MapCategoryFilter.GrassTiles;
             filterMagitekTilesToolStripMenuItem.Checked = activeMapFilter == MapCategoryFilter.MagitekTiles;
+            filterShipDeckTilesToolStripMenuItem.Checked = activeMapFilter == MapCategoryFilter.ShipDeckTiles;
 
             if (comboBoxFileFilter == null) return;
 
@@ -636,6 +646,7 @@ namespace FFVI_tileTool
             if (activeMapFilter == MapCategoryFilter.SnowTiles) targetIndex = 1;
             else if (activeMapFilter == MapCategoryFilter.GrassTiles) targetIndex = 2;
             else if (activeMapFilter == MapCategoryFilter.MagitekTiles) targetIndex = 3;
+            else if (activeMapFilter == MapCategoryFilter.ShipDeckTiles) targetIndex = 4;
 
             if (comboBoxFileFilter.SelectedIndex != targetIndex)
             {
@@ -656,6 +667,7 @@ namespace FFVI_tileTool
             if (activeMapFilter == MapCategoryFilter.SnowTiles) return "SnowTiles";
             if (activeMapFilter == MapCategoryFilter.GrassTiles) return "GrassTiles";
             if (activeMapFilter == MapCategoryFilter.MagitekTiles) return "MagitekTiles";
+            if (activeMapFilter == MapCategoryFilter.ShipDeckTiles) return "ShipDeckTiles";
             return "AllMaps";
         }
 
@@ -2719,6 +2731,11 @@ namespace FFVI_tileTool
             SetActiveMapFilter(MapCategoryFilter.MagitekTiles);
         }
 
+        private void filterShipDeckTilesToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            SetActiveMapFilter(MapCategoryFilter.ShipDeckTiles);
+        }
+
         private void comboBoxFileFilter_SelectedIndexChanged(object sender, EventArgs e)
         {
             if (isSyncingFilterDropdown) return;
@@ -2730,6 +2747,8 @@ namespace FFVI_tileTool
                 selectedFilter = MapCategoryFilter.GrassTiles;
             else if (comboBoxFileFilter.SelectedIndex == 3)
                 selectedFilter = MapCategoryFilter.MagitekTiles;
+            else if (comboBoxFileFilter.SelectedIndex == 4)
+                selectedFilter = MapCategoryFilter.ShipDeckTiles;
 
             if (selectedFilter != activeMapFilter)
                 SetActiveMapFilter(selectedFilter);
