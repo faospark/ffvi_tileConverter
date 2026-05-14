@@ -2416,6 +2416,36 @@ namespace FFVI_tileTool
                 return;
             }
 
+            string backupRoot = Path.Combine(folderPath, "map_backup");
+            bool backupRootHasContent = false;
+            int existingBackupSetCount = 0;
+            if (Directory.Exists(backupRoot))
+            {
+                try
+                {
+                    backupRootHasContent = Directory.EnumerateFileSystemEntries(backupRoot).Any();
+                    existingBackupSetCount = Directory.EnumerateDirectories(backupRoot).Count();
+                }
+                catch
+                {
+                    backupRootHasContent = true;
+                    existingBackupSetCount = 0;
+                }
+            }
+
+            if (backupRootHasContent)
+            {
+                DialogResult decision = ShowAppMessageWithActions(
+                    $"A backup folder already exists for this map set. Existing backup sets found: {existingBackupSetCount}. Creating another backup may produce redundant backup copies.\n\nDo you want to proceed and create a new backup anyway?",
+                    "Map backup",
+                    "Create Backup",
+                    "No",
+                    MessageBoxIcon.Warning);
+
+                if (decision != DialogResult.OK)
+                    return;
+            }
+
             if (!TryCreateMapBackup(folderPath, out int backedUpCount, out int skippedCount, out int failedCount, out string outputFolder))
             {
                 ShowAppMessage("No map*.bin files found in the current folder.", "Map backup", MessageBoxIcon.Warning);
