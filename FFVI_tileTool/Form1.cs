@@ -118,6 +118,7 @@ namespace FFVI_tileTool
             RefreshRecentDirectoriesMenu();
 
             RestoreLastOpenedFile();
+            this.SizeChanged += (s, e) => menuStrip1.Invalidate();
         }
 
         protected override void OnHandleCreated(EventArgs e)
@@ -1077,6 +1078,7 @@ namespace FFVI_tileTool
 
             ApplyThemeToControlTree(this, background, surface, foreground, darkMode);
             ApplyThemeToMenu(menuStrip1, surface, foreground);
+            ApplyThemeToStatusStrip(statusStrip1, surface, foreground);
             ApplyTitleBarTheme(darkMode);
             UpdatePreviewTransparencyBackground();
             Invalidate(true);
@@ -1445,6 +1447,21 @@ namespace FFVI_tileTool
                 ApplyThemeToMenuItem(item, surface, foreground);
         }
 
+        private void ApplyThemeToStatusStrip(StatusStrip statusStrip, System.Drawing.Color surface, System.Drawing.Color foreground)
+        {
+            if (statusStrip == null) return;
+
+            statusStrip.BackColor = surface;
+            statusStrip.ForeColor = foreground;
+            statusStrip.Renderer = new BorderlessToolStripRenderer(new ThemeColorTable(darkModeToolStripMenuItem.Checked));
+
+            foreach (ToolStripItem item in statusStrip.Items)
+            {
+                item.BackColor = surface;
+                item.ForeColor = foreground;
+            }
+        }
+
         private void ApplyThemeToMenuItem(ToolStripItem item, System.Drawing.Color surface, System.Drawing.Color foreground)
         {
             item.BackColor = surface;
@@ -1488,6 +1505,16 @@ namespace FFVI_tileTool
             public override System.Drawing.Color ImageMarginGradientBegin => darkMode ? System.Drawing.Color.FromArgb(45, 45, 48) : base.ImageMarginGradientBegin;
             public override System.Drawing.Color ImageMarginGradientMiddle => darkMode ? System.Drawing.Color.FromArgb(45, 45, 48) : base.ImageMarginGradientMiddle;
             public override System.Drawing.Color ImageMarginGradientEnd => darkMode ? System.Drawing.Color.FromArgb(45, 45, 48) : base.ImageMarginGradientEnd;
+        }
+
+        private sealed class BorderlessToolStripRenderer : ToolStripProfessionalRenderer
+        {
+            public BorderlessToolStripRenderer(ProfessionalColorTable colorTable) : base(colorTable) { }
+
+            protected override void OnRenderToolStripBorder(ToolStripRenderEventArgs e)
+            {
+                // Don't draw the border
+            }
         }
 
         private void UpdateWindowTitle(string filePath)

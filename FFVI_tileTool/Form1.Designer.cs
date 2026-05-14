@@ -29,6 +29,8 @@ namespace FFVI_tileTool
         private void InitializeComponent()
         {
             this.menuStrip1 = new System.Windows.Forms.MenuStrip();
+            this.statusStrip1 = new System.Windows.Forms.StatusStrip();
+            this.versionLabel = new System.Windows.Forms.ToolStripStatusLabel();
             this.browseToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.browseOpenToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.browseRecentSeparatorToolStripMenuItem = new System.Windows.Forms.ToolStripSeparator();
@@ -74,6 +76,7 @@ namespace FFVI_tileTool
             this.button4 = new System.Windows.Forms.Button();
             this.buttonSection2PaletteInfo = new System.Windows.Forms.Button();
             this.menuStrip1.SuspendLayout();
+            this.statusStrip1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
             this.splitContainer1.Panel1.SuspendLayout();
             this.splitContainer1.Panel2.SuspendLayout();
@@ -436,7 +439,7 @@ namespace FFVI_tileTool
             this.groupBox1.Controls.Add(this.button1);
             this.groupBox1.Location = new System.Drawing.Point(0, 0);
             this.groupBox1.Name = "groupBox1";
-            this.groupBox1.Size = new System.Drawing.Size(554, 50);
+            this.groupBox1.Size = new System.Drawing.Size(547, 50);
             this.groupBox1.TabIndex = 2;
             this.groupBox1.TabStop = false;
             this.groupBox1.Text = "I/O controls Section 1";
@@ -476,9 +479,9 @@ namespace FFVI_tileTool
             this.groupBox2.Controls.Add(this.buttonSection2PaletteInfo);
             this.groupBox2.Controls.Add(this.button3);
             this.groupBox2.Controls.Add(this.button4);
-            this.groupBox2.Location = new System.Drawing.Point(574, 0);
+            this.groupBox2.Location = new System.Drawing.Point(547, 0);
             this.groupBox2.Name = "groupBox2";
-            this.groupBox2.Size = new System.Drawing.Size(554, 50);
+            this.groupBox2.Size = new System.Drawing.Size(547, 50);
             this.groupBox2.TabIndex = 3;
             this.groupBox2.TabStop = false;
             this.groupBox2.Text = "I/O controls Section 2";
@@ -512,19 +515,41 @@ namespace FFVI_tileTool
             this.buttonSection2PaletteInfo.Text = "Image Info: n/a";
             this.buttonSection2PaletteInfo.UseVisualStyleBackColor = true;
             this.buttonSection2PaletteInfo.Click += new System.EventHandler(this.buttonSection2PaletteInfo_Click);
-            // 
+            //
+            // statusStrip1
+            //
+            this.statusStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.versionLabel});
+            this.statusStrip1.Location = new System.Drawing.Point(0, 648);
+            this.statusStrip1.Name = "statusStrip1";
+            this.statusStrip1.Size = new System.Drawing.Size(1260, 22);
+            this.statusStrip1.TabIndex = 2;
+            this.statusStrip1.BackColor = System.Drawing.Color.FromArgb(45, 45, 48);
+            this.statusStrip1.ForeColor = System.Drawing.Color.Gainsboro;
+            //
+            // versionLabel
+            //
+            this.versionLabel.Name = "versionLabel";
+            this.versionLabel.Size = new System.Drawing.Size(1245, 17);
+            this.versionLabel.Spring = true;
+            this.versionLabel.Text = "Version 2026.5";
+            this.versionLabel.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+            //
             // Form1
-            // 
+            //
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(1260, 670);
             this.Controls.Add(this.splitContainer1);
             this.Controls.Add(this.menuStrip1);
+            this.Controls.Add(this.statusStrip1);
             this.MainMenuStrip = this.menuStrip1;
             this.Name = "Form1";
             this.Text = "FFVI Old Tile Tool";
             this.menuStrip1.ResumeLayout(false);
             this.menuStrip1.PerformLayout();
+            this.statusStrip1.ResumeLayout(false);
+            this.statusStrip1.PerformLayout();
             this.splitContainer1.Panel1.ResumeLayout(false);
             this.splitContainer1.Panel2.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).EndInit();
@@ -550,6 +575,8 @@ namespace FFVI_tileTool
         #endregion
 
         private System.Windows.Forms.MenuStrip menuStrip1;
+        private System.Windows.Forms.StatusStrip statusStrip1;
+        private System.Windows.Forms.ToolStripStatusLabel versionLabel;
         private System.Windows.Forms.ToolStripMenuItem browseToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem browseOpenToolStripMenuItem;
         private System.Windows.Forms.ToolStripSeparator browseRecentSeparatorToolStripMenuItem;
