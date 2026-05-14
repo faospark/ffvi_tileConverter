@@ -65,7 +65,6 @@ namespace FFVI_tileTool
             this.previewSection1ContextMenuStrip = new System.Windows.Forms.ContextMenuStrip();
             this.previewSection1ExportImageToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.previewSection1ImportImageToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.flowLayoutPanel1 = new System.Windows.Forms.FlowLayoutPanel();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
             this.button2 = new System.Windows.Forms.Button();
             this.button1 = new System.Windows.Forms.Button();
@@ -89,7 +88,6 @@ namespace FFVI_tileTool
             this.groupBox3.SuspendLayout();
             this.panel1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
-            this.flowLayoutPanel1.SuspendLayout();
             this.groupBox1.SuspendLayout();
             this.groupBox2.SuspendLayout();
             this.SuspendLayout();
@@ -341,10 +339,11 @@ namespace FFVI_tileTool
             // 
             this.splitContainer2.Panel1.Controls.Add(this.groupBox4);
             this.splitContainer2.Panel1.Controls.Add(this.groupBox3);
-            // 
+            //
             // splitContainer2.Panel2
-            // 
-            this.splitContainer2.Panel2.Controls.Add(this.flowLayoutPanel1);
+            //
+            this.splitContainer2.Panel2.Controls.Add(this.groupBox1);
+            this.splitContainer2.Panel2.Controls.Add(this.groupBox2);
             this.splitContainer2.Size = new System.Drawing.Size(1094, 646);
             this.splitContainer2.SplitterDistance = 520;
             this.splitContainer2.TabIndex = 0;
@@ -429,32 +428,22 @@ namespace FFVI_tileTool
             this.previewSection1ImportImageToolStripMenuItem.Size = new System.Drawing.Size(138, 22);
             this.previewSection1ImportImageToolStripMenuItem.Text = "Import image";
             this.previewSection1ImportImageToolStripMenuItem.Click += new System.EventHandler(this.previewSection1ImportImageToolStripMenuItem_Click);
-            // 
-            // flowLayoutPanel1
-            // 
-            this.flowLayoutPanel1.Controls.Add(this.groupBox1);
-            this.flowLayoutPanel1.Controls.Add(this.groupBox2);
-            this.flowLayoutPanel1.Dock = System.Windows.Forms.DockStyle.Left;
-            this.flowLayoutPanel1.Location = new System.Drawing.Point(0, 0);
-            this.flowLayoutPanel1.Name = "flowLayoutPanel1";
-            this.flowLayoutPanel1.Size = new System.Drawing.Size(1094, 102);
-            this.flowLayoutPanel1.TabIndex = 0;
-            // 
+            //
             // groupBox1
-            // 
+            //
             this.groupBox1.Controls.Add(this.buttonSection1PaletteInfo);
             this.groupBox1.Controls.Add(this.button2);
             this.groupBox1.Controls.Add(this.button1);
-            this.groupBox1.Location = new System.Drawing.Point(3, 3);
+            this.groupBox1.Location = new System.Drawing.Point(0, 0);
             this.groupBox1.Name = "groupBox1";
-            this.groupBox1.Size = new System.Drawing.Size(537, 50);
+            this.groupBox1.Size = new System.Drawing.Size(554, 50);
             this.groupBox1.TabIndex = 2;
             this.groupBox1.TabStop = false;
             this.groupBox1.Text = "I/O controls Section 1";
             // 
             // button2
             // 
-            this.button2.Location = new System.Drawing.Point(192, 19);
+            this.button2.Location = new System.Drawing.Point(172, 19);
             this.button2.Name = "button2";
             this.button2.Size = new System.Drawing.Size(150, 24);
             this.button2.TabIndex = 1;
@@ -481,22 +470,22 @@ namespace FFVI_tileTool
             this.buttonSection1PaletteInfo.Text = "Image Info: n/a";
             this.buttonSection1PaletteInfo.UseVisualStyleBackColor = true;
             this.buttonSection1PaletteInfo.Click += new System.EventHandler(this.buttonSection1PaletteInfo_Click);
-            // 
+            //
             // groupBox2
-            // 
+            //
             this.groupBox2.Controls.Add(this.buttonSection2PaletteInfo);
             this.groupBox2.Controls.Add(this.button3);
             this.groupBox2.Controls.Add(this.button4);
-            this.groupBox2.Location = new System.Drawing.Point(3, 59);
+            this.groupBox2.Location = new System.Drawing.Point(574, 0);
             this.groupBox2.Name = "groupBox2";
-            this.groupBox2.Size = new System.Drawing.Size(537, 50);
+            this.groupBox2.Size = new System.Drawing.Size(554, 50);
             this.groupBox2.TabIndex = 3;
             this.groupBox2.TabStop = false;
             this.groupBox2.Text = "I/O controls Section 2";
             // 
             // button3
             // 
-            this.button3.Location = new System.Drawing.Point(192, 19);
+            this.button3.Location = new System.Drawing.Point(172, 19);
             this.button3.Name = "button3";
             this.button3.Size = new System.Drawing.Size(150, 24);
             this.button3.TabIndex = 1;
@@ -551,7 +540,6 @@ namespace FFVI_tileTool
             this.panel1.ResumeLayout(false);
             this.panel1.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).EndInit();
-            this.flowLayoutPanel1.ResumeLayout(false);
             this.groupBox1.ResumeLayout(false);
             this.groupBox2.ResumeLayout(false);
             this.ResumeLayout(false);
@@ -587,7 +575,6 @@ namespace FFVI_tileTool
         private System.Windows.Forms.ToolStripMenuItem previewSection2ExportImageToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem previewSection2ImportImageToolStripMenuItem;
         private System.Windows.Forms.SplitContainer splitContainer2;
-        private System.Windows.Forms.FlowLayoutPanel flowLayoutPanel1;
         private System.Windows.Forms.Button button1;
         private System.Windows.Forms.Button button2;
         private System.Windows.Forms.ToolStripMenuItem browseAndMassExportToolStripMenuItem;
