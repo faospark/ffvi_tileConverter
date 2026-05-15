@@ -331,31 +331,80 @@ namespace FFVI_tileTool
 
         private void gzipThisFileToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            string filePath = GetSelectedMapFilePath();
-            if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
+            List<string> selectedFiles = GetSelectedMapFilePaths();
+            if (selectedFiles.Count == 0)
             {
-                ShowAppMessage("Unable to locate the selected file.", "Gzip file", MessageBoxIcon.Warning);
+                string fallbackFile = GetSelectedMapFilePath();
+                if (!string.IsNullOrWhiteSpace(fallbackFile))
+                    selectedFiles.Add(fallbackFile);
+            }
+
+            if (selectedFiles.Count == 0)
+            {
+                ShowAppMessage("Unable to locate the selected file(s).", "Gzip file", MessageBoxIcon.Warning);
                 return;
             }
 
-            string gzipPath = filePath + ".gz";
+            int gzippedCount = 0;
+            int failedCount = 0;
+            string singleOutputPath = null;
+            List<string> failedFiles = new List<string>();
 
-            try
+            foreach (string filePath in selectedFiles)
             {
-                if (File.Exists(gzipPath))
-                    File.Delete(gzipPath);
+                try
+                {
+                    if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
+                    {
+                        failedCount++;
+                        failedFiles.Add($"{Path.GetFileName(filePath ?? "(unknown)")}: file not found");
+                        continue;
+                    }
 
-                using (FileStream inputStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read))
-                using (FileStream outputStream = new FileStream(gzipPath, FileMode.Create, FileAccess.Write, FileShare.None))
-                using (GZipStream gzipStream = new GZipStream(outputStream, CompressionMode.Compress))
-                    inputStream.CopyTo(gzipStream);
+                    string gzipPath = filePath + ".gz";
+                    if (File.Exists(gzipPath))
+                        File.Delete(gzipPath);
 
-                ShowAppMessage($"Gzip created successfully.\n\nOutput: {gzipPath}", "Gzip file", MessageBoxIcon.Information);
+                    using (FileStream inputStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read))
+                    using (FileStream outputStream = new FileStream(gzipPath, FileMode.Create, FileAccess.Write, FileShare.None))
+                    using (GZipStream gzipStream = new GZipStream(outputStream, CompressionMode.Compress))
+                        inputStream.CopyTo(gzipStream);
+
+                    gzippedCount++;
+                    singleOutputPath = gzipPath;
+                }
+                catch (Exception ex)
+                {
+                    failedCount++;
+                    failedFiles.Add($"{Path.GetFileName(filePath)}: {ex.Message}");
+                }
             }
-            catch (Exception ex)
+
+            if (selectedFiles.Count == 1 && gzippedCount == 1 && failedCount == 0)
             {
-                ShowAppMessage($"Failed to create gzip file.\n\n{ex.Message}", "Gzip file", MessageBoxIcon.Warning);
+                ShowAppMessage($"Gzip created successfully.\n\nOutput: {singleOutputPath}", "Gzip file", MessageBoxIcon.Information);
+                return;
             }
+
+            StringBuilder summary = new StringBuilder();
+            summary.AppendLine("Gzip operation finished.");
+            summary.AppendLine();
+            summary.AppendLine($"Selected: {selectedFiles.Count}");
+            summary.AppendLine($"Gzipped: {gzippedCount}");
+            summary.AppendLine($"Failed: {failedCount}");
+
+            if (failedFiles.Count > 0)
+            {
+                summary.AppendLine();
+                summary.AppendLine("Failures:");
+                foreach (string failed in failedFiles.Take(10))
+                    summary.AppendLine(failed);
+
+                if (failedFiles.Count > 10)
+                    summary.AppendLine($"...and {failedFiles.Count - 10} more.");
+            }
+
+            ShowAppMessage(summary.ToString(), "Gzip files", failedCount == 0 ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
         }
 
         private void isolateSelectedFilesToolStripMenuItem_Click(object sender, EventArgs e)
@@ -1663,9 +1712,7 @@ namespace FFVI_tileTool
 
             if (!previewTreat050505AsTransparent)
             {
-                Bitmap upsideDownPreview = (Bitmap)source.Clone();
-                upsideDownPreview.RotateFlip(RotateFlipType.RotateNoneFlipY);
-                return upsideDownPreview;
+                return (Bitmap)source.Clone();
             }
 
             bool[] transparentIndex = new bool[256];
@@ -1683,9 +1730,7 @@ namespace FFVI_tileTool
 
             if (!hasTransparentIndices)
             {
-                Bitmap upsideDownPreview = (Bitmap)source.Clone();
-                upsideDownPreview.RotateFlip(RotateFlipType.RotateNoneFlipY);
-                return upsideDownPreview;
+                return (Bitmap)source.Clone();
             }
 
             Bitmap preview = new Bitmap(source.Width, source.Height, PixelFormat.Format32bppArgb);
@@ -1727,8 +1772,6 @@ namespace FFVI_tileTool
                 source.UnlockBits(sourceData);
                 preview.UnlockBits(previewData);
             }
-
-            preview.RotateFlip(RotateFlipType.RotateNoneFlipY);
 
             return preview;
         }

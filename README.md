@@ -3,7 +3,7 @@
 FFVI Old Tile Tool is an application for viewing, exporting, importing, and managing section graphics / tiles stored in Final Fantasy VI Old Ver map bin files. This is based of Maki's Original FFVI Tile Tool. This version attempts to lessen the friction in editing the tiles of the game and introduces a variety of quality of life improvements in the work flow. 
 
 ## Key Change from Previous Versions
-This version can now properly reinsert modified section 1 (Previously called Chunk 1) 
+This version can now properly reinsert modified section 1 (Previously called Chunk 1) Back in the bin files. On previous version this break
 
 
 ## What The Tool Does
