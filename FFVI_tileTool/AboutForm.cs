@@ -26,7 +26,7 @@ namespace FFVI_tileTool
             this.FormBorderStyle = FormBorderStyle.FixedDialog;
             this.MaximizeBox = false;
             this.MinimizeBox = false;
-            this.Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
+            this.Icon = Form1.GetApplicationIcon();
 
             // Main container with vertical layout
             var mainPanel = new TableLayoutPanel
@@ -48,7 +48,7 @@ namespace FFVI_tileTool
             var iconContainer = new Panel { Height = 50, Dock = DockStyle.Top, AutoSize = false };
             var pictureBox = new PictureBox
             {
-                Image = Icon.ExtractAssociatedIcon(Application.ExecutablePath).ToBitmap(),
+                Image = Form1.GetApplicationIcon().ToBitmap(),
                 SizeMode = PictureBoxSizeMode.AutoSize,
                 Anchor = AnchorStyles.None
             };

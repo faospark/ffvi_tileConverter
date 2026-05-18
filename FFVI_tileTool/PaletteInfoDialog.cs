@@ -15,15 +15,15 @@ namespace FFVI_tileTool
         {
             InitializeComponent();
             this.Text = title;
+            this.Icon = Form1.GetApplicationIcon();
             this.paletteBuffer = palette ?? new byte[1024];
             this.offsets = offsetList ?? new List<int>();
             this.darkMode = darkMode;
 
             if (darkMode)
-            {
                 ApplyDarkMode();
-                Form1.ApplyTitleBarThemeToForm(this, darkMode);
-            }
+
+            Form1.ApplyTitleBarThemeToForm(this, darkMode);
 
             PopulateOffsets();
             DrawPalettePreview();

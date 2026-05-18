@@ -35,6 +35,11 @@ namespace FFVI_tileTool
 
         private const int DwmwaUseImmersiveDarkMode = 20;
         private const int DwmwaUseImmersiveDarkModeBefore20H1 = 19;
+        private const int WhCbt = 5;
+        private const int HcbtActivate = 5;
+        private const int WmSetIcon = 0x0080;
+        private static readonly IntPtr IconSmall = new IntPtr(0);
+        private static readonly IntPtr IconBig = new IntPtr(1);
         private const string LastOpenedFileStateName = "last-opened-map.txt";
         private const string RecentDirectoriesStateName = "recent-map-directories.txt";
         private const string DarkModeStateName = "dark-mode.txt";
@@ -69,6 +74,24 @@ namespace FFVI_tileTool
         [DllImport("dwmapi.dll", PreserveSig = true)]
         private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int pvAttribute, int cbAttribute);
 
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern IntPtr SetWindowsHookEx(int idHook, HookProc lpfn, IntPtr hMod, uint dwThreadId);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool UnhookWindowsHookEx(IntPtr hhk);
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr CallNextHookEx(IntPtr hhk, int nCode, IntPtr wParam, IntPtr lParam);
+
+        [DllImport("kernel32.dll")]
+        private static extern uint GetCurrentThreadId();
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
+
+        private delegate IntPtr HookProc(int nCode, IntPtr wParam, IntPtr lParam);
+
         string[] st;
         private string[] allMapFiles = new string[0];
         private List<string> recentDirectories = new List<string>();
@@ -84,11 +107,12 @@ namespace FFVI_tileTool
         private Bitmap currentSection2SourceBitmap;
         private Bitmap previewCheckerBackgroundBitmap;
         private bool isSyncingFilterDropdown;
+        private static Icon cachedApplicationIcon;
 
         public Form1()
         {
             InitializeComponent();
-            Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
+            Icon = GetApplicationIcon();
             Text = DefaultWindowTitle;
 
             comboBoxFileFilter.Items.AddRange(new object[]
@@ -141,7 +165,7 @@ namespace FFVI_tileTool
                 CheckPathExists = true
             })
             {
-                if (dialog.ShowDialog() != DialogResult.OK) return;
+                if (ShowThemedCommonDialog(dialog, this) != DialogResult.OK) return;
 
                 string selectedFolder = Path.GetDirectoryName(dialog.FileName);
                 if (string.IsNullOrWhiteSpace(selectedFolder) || !Directory.Exists(selectedFolder)) return;
@@ -562,8 +586,7 @@ namespace FFVI_tileTool
             using (Panel buttonPanel = new Panel())
             using (Button selectButton = new Button())
             using (Button cancelButton = new Button())
-            {
-                dialog.Text = "Choose Existing Isolation Folder";
+                {
                 dialog.FormBorderStyle = FormBorderStyle.FixedDialog;
                 dialog.StartPosition = FormStartPosition.CenterParent;
                 dialog.MinimizeBox = false;
@@ -806,6 +829,7 @@ namespace FFVI_tileTool
 
                 GetThemeColors(darkModeToolStripMenuItem.Checked, out System.Drawing.Color background, out System.Drawing.Color surface, out System.Drawing.Color foreground);
                 ApplyThemeToControlTree(progressForm, background, surface, foreground, darkModeToolStripMenuItem.Checked);
+                ApplyTitleBarThemeToForm(progressForm, darkModeToolStripMenuItem.Checked);
 
                 progressForm.Show(this);
                 progressForm.Refresh();
@@ -1258,20 +1282,107 @@ namespace FFVI_tileTool
         {
             if (!IsHandleCreated) return;
 
-            int useDarkMode = darkMode ? 1 : 0;
-            int result = DwmSetWindowAttribute(Handle, DwmwaUseImmersiveDarkMode, ref useDarkMode, sizeof(int));
-            if (result != 0)
-                DwmSetWindowAttribute(Handle, DwmwaUseImmersiveDarkModeBefore20H1, ref useDarkMode, sizeof(int));
+            ApplyWindowChrome(Handle, darkMode);
         }
 
         public static void ApplyTitleBarThemeToForm(Form form, bool darkMode)
         {
-            if (!form.IsHandleCreated) return;
+            if (form == null) return;
+
+            form.Icon = GetApplicationIcon();
+
+            if (form.IsHandleCreated)
+            {
+                ApplyWindowChrome(form.Handle, darkMode);
+                return;
+            }
+
+            EventHandler handleCreated = null;
+            handleCreated = (sender, args) =>
+            {
+                form.HandleCreated -= handleCreated;
+                ApplyWindowChrome(form.Handle, darkMode);
+            };
+
+            form.HandleCreated += handleCreated;
+        }
+
+        public static Icon GetApplicationIcon()
+        {
+            if (cachedApplicationIcon != null)
+                return cachedApplicationIcon;
+
+            try
+            {
+                Icon executableIcon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
+                if (executableIcon != null)
+                    cachedApplicationIcon = (Icon)executableIcon.Clone();
+            }
+            catch
+            {
+            }
+
+            if (cachedApplicationIcon == null)
+                cachedApplicationIcon = SystemIcons.Application;
+
+            return cachedApplicationIcon;
+        }
+
+        private static void ApplyWindowChrome(IntPtr windowHandle, bool darkMode)
+        {
+            if (windowHandle == IntPtr.Zero) return;
 
             int useDarkMode = darkMode ? 1 : 0;
-            int result = DwmSetWindowAttribute(form.Handle, DwmwaUseImmersiveDarkMode, ref useDarkMode, sizeof(int));
+            int result = DwmSetWindowAttribute(windowHandle, DwmwaUseImmersiveDarkMode, ref useDarkMode, sizeof(int));
             if (result != 0)
-                DwmSetWindowAttribute(form.Handle, DwmwaUseImmersiveDarkModeBefore20H1, ref useDarkMode, sizeof(int));
+                DwmSetWindowAttribute(windowHandle, DwmwaUseImmersiveDarkModeBefore20H1, ref useDarkMode, sizeof(int));
+
+            Icon appIcon = GetApplicationIcon();
+            if (appIcon == null) return;
+
+            SendMessage(windowHandle, WmSetIcon, IconSmall, appIcon.Handle);
+            SendMessage(windowHandle, WmSetIcon, IconBig, appIcon.Handle);
+        }
+
+        private DialogResult ShowThemedCommonDialog(CommonDialog dialog, IWin32Window owner = null)
+        {
+            bool darkMode = darkModeToolStripMenuItem.Checked;
+            using (new NativeDialogThemeScope(darkMode))
+            {
+                return owner == null ? dialog.ShowDialog() : dialog.ShowDialog(owner);
+            }
+        }
+
+        private sealed class NativeDialogThemeScope : IDisposable
+        {
+            private readonly bool darkMode;
+            private readonly HookProc hookCallback;
+            private readonly IntPtr hookHandle;
+            private bool themedDialog;
+
+            public NativeDialogThemeScope(bool darkMode)
+            {
+                this.darkMode = darkMode;
+                hookCallback = DialogHook;
+                hookHandle = SetWindowsHookEx(WhCbt, hookCallback, IntPtr.Zero, GetCurrentThreadId());
+            }
+
+            private IntPtr DialogHook(int nCode, IntPtr wParam, IntPtr lParam)
+            {
+                if (nCode == HcbtActivate && !themedDialog)
+                {
+                    themedDialog = true;
+                    ApplyWindowChrome(wParam, darkMode);
+                }
+
+                return CallNextHookEx(hookHandle, nCode, wParam, lParam);
+            }
+
+            public void Dispose()
+            {
+                if (hookHandle != IntPtr.Zero)
+                    UnhookWindowsHookEx(hookHandle);
+            }
         }
 
         private void GetThemeColors(bool darkMode, out System.Drawing.Color background, out System.Drawing.Color surface, out System.Drawing.Color foreground)
@@ -1880,7 +1991,7 @@ namespace FFVI_tileTool
                 DefaultExt = "png",
                 FileName = $"{defaultBaseFileName}.png"
             })
-                if (sfd.ShowDialog() == DialogResult.OK)
+                if (ShowThemedCommonDialog(sfd, this) == DialogResult.OK)
                 {
                     string extension = Path.GetExtension(sfd.FileName).ToLowerInvariant();
                     ImageFormat format = extension == ".bmp" ? ImageFormat.Bmp : ImageFormat.Png;
@@ -1892,7 +2003,7 @@ namespace FFVI_tileTool
         {
             string path = "";
             using (OpenFileDialog ofd = new OpenFileDialog() { Filter = "Image files (*.png;*.bmp)|*.png;*.bmp|PNG files (*.png)|*.png|BMP files (*.bmp)|*.bmp", Multiselect = false })
-                if (ofd.ShowDialog() == DialogResult.OK)
+                if (ShowThemedCommonDialog(ofd, this) == DialogResult.OK)
                     path = ofd.FileName;
                 else return;
 
@@ -1915,7 +2026,7 @@ namespace FFVI_tileTool
         {
             string path = "";
             using (OpenFileDialog ofd = new OpenFileDialog() { Filter = "Image files (*.png;*.bmp)|*.png;*.bmp|PNG files (*.png)|*.png|BMP files (*.bmp)|*.bmp", Multiselect = false })
-                if (ofd.ShowDialog() == DialogResult.OK)
+                if (ShowThemedCommonDialog(ofd, this) == DialogResult.OK)
                     path = ofd.FileName;
                 else return;
 
@@ -1961,10 +2072,9 @@ namespace FFVI_tileTool
             try
             {
                 argbSource = source.Clone(rect, PixelFormat.Format32bppArgb);
-
-                byte[] indices = new byte[width * height];
                 Dictionary<int, byte> colorToIndex = new Dictionary<int, byte>();
                 List<Color> paletteEntries = new List<Color>(256);
+                byte[] indices = new byte[width * height];
 
                 BitmapData sourceData = argbSource.LockBits(rect, ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
                 try
@@ -2346,7 +2456,7 @@ namespace FFVI_tileTool
                 CheckPathExists = true
             })
             {
-                if (dialog.ShowDialog() != DialogResult.OK) return;
+                if (ShowThemedCommonDialog(dialog, this) != DialogResult.OK) return;
 
                 string sourceFolder = Path.GetDirectoryName(dialog.FileName);
                 if (string.IsNullOrWhiteSpace(sourceFolder) || !Directory.Exists(sourceFolder)) return;
@@ -2443,6 +2553,7 @@ namespace FFVI_tileTool
                     progressForm.Controls.Add(progressBar);
                     GetThemeColors(darkModeToolStripMenuItem.Checked, out System.Drawing.Color background, out System.Drawing.Color surface, out System.Drawing.Color foreground);
                     ApplyThemeToControlTree(progressForm, background, surface, foreground, darkModeToolStripMenuItem.Checked);
+                    ApplyTitleBarThemeToForm(progressForm, darkModeToolStripMenuItem.Checked);
                     progressForm.Show(this);
                     progressForm.Refresh();
 
@@ -2541,7 +2652,7 @@ namespace FFVI_tileTool
                 Multiselect = false
             })
             {
-                if (importFolderDialog.ShowDialog(this) != DialogResult.OK) return;
+                if (ShowThemedCommonDialog(importFolderDialog, this) != DialogResult.OK) return;
                 importFolder = Path.GetDirectoryName(importFolderDialog.FileName);
             }
 
@@ -2593,6 +2704,7 @@ namespace FFVI_tileTool
                 progressForm.Controls.Add(progressBar);
                 GetThemeColors(darkModeToolStripMenuItem.Checked, out System.Drawing.Color background, out System.Drawing.Color surface, out System.Drawing.Color foreground);
                 ApplyThemeToControlTree(progressForm, background, surface, foreground, darkModeToolStripMenuItem.Checked);
+                ApplyTitleBarThemeToForm(progressForm, darkModeToolStripMenuItem.Checked);
                 progressForm.Show(this);
                 progressForm.Refresh();
 
