@@ -108,6 +108,11 @@ namespace FFVI_tileTool
         private Bitmap previewCheckerBackgroundBitmap;
         private bool isSyncingFilterDropdown;
         private static Icon cachedApplicationIcon;
+        private Panel aboutOverlayBackdrop;
+        private Panel aboutOverlayCard;
+        private Panel aboutOverlayContentHost;
+        private Button aboutOverlayCloseButton;
+        private AboutForm aboutOverlayContent;
 
         public Form1()
         {
@@ -140,6 +145,7 @@ namespace FFVI_tileTool
 
             RestoreLastOpenedFile();
             this.SizeChanged += (s, e) => menuStrip1.Invalidate();
+            this.SizeChanged += (s, e) => CenterAboutOverlayCard();
         }
 
         protected override void OnHandleCreated(EventArgs e)
@@ -1232,8 +1238,138 @@ namespace FFVI_tileTool
             ApplyThemeToMenu(menuStrip1, surface, foreground);
             ApplyThemeToStatusStrip(statusStrip1, surface, foreground);
             ApplyTitleBarTheme(darkMode);
+            UpdateAboutOverlayTheme(darkMode, surface, foreground);
             UpdatePreviewTransparencyBackground();
             Invalidate(true);
+        }
+
+        private void EnsureAboutOverlayCreated()
+        {
+            if (aboutOverlayBackdrop != null)
+                return;
+
+            aboutOverlayBackdrop = new Panel
+            {
+                Dock = DockStyle.Fill,
+                Visible = false
+            };
+            aboutOverlayBackdrop.Click += (s, e) => HideAboutOverlay();
+
+            aboutOverlayCard = new Panel
+            {
+                Size = new Size(560, 560),
+                BorderStyle = BorderStyle.FixedSingle
+            };
+            aboutOverlayCard.Click += (s, e) => { };
+            aboutOverlayBackdrop.Controls.Add(aboutOverlayCard);
+
+            aboutOverlayContentHost = new Panel
+            {
+                Dock = DockStyle.Fill,
+                Padding = new Padding(0, 34, 0, 0)
+            };
+            aboutOverlayCard.Controls.Add(aboutOverlayContentHost);
+
+            aboutOverlayCloseButton = new Button
+            {
+                Text = "X",
+                Size = new Size(30, 26),
+                FlatStyle = FlatStyle.Flat,
+                TabStop = false,
+                Anchor = AnchorStyles.Top | AnchorStyles.Right
+            };
+            aboutOverlayCloseButton.FlatAppearance.BorderSize = 1;
+            aboutOverlayCloseButton.Click += (s, e) => HideAboutOverlay();
+            aboutOverlayCard.Controls.Add(aboutOverlayCloseButton);
+            aboutOverlayCard.Resize += (s, e) =>
+            {
+                aboutOverlayCloseButton.Location = new Point(aboutOverlayCard.ClientSize.Width - aboutOverlayCloseButton.Width - 6, 5);
+            };
+
+            Controls.Add(aboutOverlayBackdrop);
+            aboutOverlayBackdrop.BringToFront();
+            CenterAboutOverlayCard();
+        }
+
+        private void CenterAboutOverlayCard()
+        {
+            if (aboutOverlayBackdrop == null || aboutOverlayCard == null)
+                return;
+
+            int x = Math.Max(8, (aboutOverlayBackdrop.ClientSize.Width - aboutOverlayCard.Width) / 2);
+            int y = Math.Max(8, (aboutOverlayBackdrop.ClientSize.Height - aboutOverlayCard.Height) / 2);
+            aboutOverlayCard.Location = new Point(x, y);
+        }
+
+        private void ShowAboutOverlay()
+        {
+            EnsureAboutOverlayCreated();
+
+            if (aboutOverlayContent != null)
+            {
+                aboutOverlayContentHost.Controls.Remove(aboutOverlayContent);
+                aboutOverlayContent.Dispose();
+                aboutOverlayContent = null;
+            }
+
+            aboutOverlayContent = new AboutForm(darkModeToolStripMenuItem.Checked)
+            {
+                TopLevel = false,
+                FormBorderStyle = FormBorderStyle.None,
+                Dock = DockStyle.Fill
+            };
+
+            aboutOverlayContentHost.Controls.Add(aboutOverlayContent);
+            aboutOverlayContent.Show();
+
+            UpdateAboutOverlayTheme(darkModeToolStripMenuItem.Checked,
+                darkModeToolStripMenuItem.Checked ? System.Drawing.Color.FromArgb(45, 45, 48) : SystemColors.Window,
+                darkModeToolStripMenuItem.Checked ? System.Drawing.Color.Gainsboro : SystemColors.ControlText);
+
+            aboutOverlayBackdrop.Visible = true;
+            aboutOverlayBackdrop.BringToFront();
+            aboutOverlayCard.BringToFront();
+            CenterAboutOverlayCard();
+        }
+
+        private void HideAboutOverlay()
+        {
+            if (aboutOverlayBackdrop == null)
+                return;
+
+            aboutOverlayBackdrop.Visible = false;
+            if (aboutOverlayContent != null)
+            {
+                aboutOverlayContentHost.Controls.Remove(aboutOverlayContent);
+                aboutOverlayContent.Dispose();
+                aboutOverlayContent = null;
+            }
+        }
+
+        private void UpdateAboutOverlayTheme(bool darkMode, System.Drawing.Color surface, System.Drawing.Color foreground)
+        {
+            if (aboutOverlayBackdrop == null)
+                return;
+
+            aboutOverlayBackdrop.BackColor = darkMode
+                ? System.Drawing.Color.FromArgb(24, 24, 28)
+                : System.Drawing.Color.FromArgb(230, 230, 230);
+
+            aboutOverlayCard.BackColor = darkMode
+                ? System.Drawing.Color.FromArgb(30, 30, 30)
+                : SystemColors.Control;
+
+            if (aboutOverlayCloseButton != null)
+            {
+                aboutOverlayCloseButton.BackColor = surface;
+                aboutOverlayCloseButton.ForeColor = foreground;
+                if (darkMode)
+                {
+                    aboutOverlayCloseButton.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(80, 80, 88);
+                    aboutOverlayCloseButton.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(72, 72, 78);
+                    aboutOverlayCloseButton.FlatAppearance.MouseDownBackColor = System.Drawing.Color.FromArgb(90, 90, 98);
+                }
+            }
         }
 
         private static Bitmap CreateCheckerboardTile(System.Drawing.Color first, System.Drawing.Color second)
@@ -1719,8 +1855,7 @@ namespace FFVI_tileTool
 
         private void aboutToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            AboutForm aboutForm = new AboutForm(darkModeToolStripMenuItem.Checked);
-            aboutForm.ShowDialog(this);
+            ShowAboutOverlay();
         }
 
         private sealed class ThemeColorTable : ProfessionalColorTable
