@@ -7,7 +7,13 @@ namespace FFVI_tileTool
 {
     public class AboutForm : Form
     {
+        private const int SectionHorizontalInset = 12;
+
         private bool isDarkMode;
+        private Button infoTabButton;
+        private Button licenseTabButton;
+        private Panel infoPanel;
+        private Panel licensePanel;
 
         public AboutForm(bool darkMode)
         {
@@ -84,20 +90,72 @@ namespace FFVI_tileTool
             };
             mainPanel.Controls.Add(descLabel, 0, 2);
 
-            // TabControl
-            var tabControl = new TabControl
+            // Section switcher + content host
+            var sectionContainer = new Panel
             {
                 Dock = DockStyle.Fill,
                 Margin = new Padding(0, 5, 0, 5)
             };
-            mainPanel.Controls.Add(tabControl, 0, 3);
+            mainPanel.Controls.Add(sectionContainer, 0, 3);
 
-            // Info Tab
-            var infoTab = new TabPage("Info");
-            tabControl.TabPages.Add(infoTab);
+            var sectionHeader = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Top,
+                Height = 32,
+                WrapContents = false,
+                AutoSize = false,
+                Margin = new Padding(0),
+                Padding = new Padding(SectionHorizontalInset, 0, SectionHorizontalInset, 0)
+            };
+            sectionContainer.Controls.Add(sectionHeader);
 
-            var infoPanel = new Panel { Dock = DockStyle.Fill, Padding = new Padding(10), AutoScroll = true };
-            infoTab.Controls.Add(infoPanel);
+            infoTabButton = new Button
+            {
+                Text = "Info",
+                Width = 110,
+                Height = 28,
+                Margin = new Padding(0),
+                FlatStyle = FlatStyle.Flat,
+                TabStop = false
+            };
+            infoTabButton.FlatAppearance.BorderSize = 1;
+            infoTabButton.Click += (s, e) => ShowSection(true);
+            sectionHeader.Controls.Add(infoTabButton);
+
+            licenseTabButton = new Button
+            {
+                Text = "License",
+                Width = 110,
+                Height = 28,
+                Margin = new Padding(2, 0, 0, 0),
+                FlatStyle = FlatStyle.Flat,
+                TabStop = false
+            };
+            licenseTabButton.FlatAppearance.BorderSize = 1;
+            licenseTabButton.Click += (s, e) => ShowSection(false);
+            sectionHeader.Controls.Add(licenseTabButton);
+
+            var sectionBorder = new Panel
+            {
+                Dock = DockStyle.Fill,
+                Padding = new Padding(SectionHorizontalInset, 1, SectionHorizontalInset, 1)
+            };
+            sectionContainer.Controls.Add(sectionBorder);
+
+            var sectionContentHost = new Panel
+            {
+                Dock = DockStyle.Fill
+            };
+            sectionBorder.Controls.Add(sectionContentHost);
+
+            infoPanel = new Panel
+            {
+                Dock = DockStyle.Fill,
+                Padding = new Padding(10),
+                AutoScroll = true,
+                BorderStyle = BorderStyle.None
+            };
+            sectionContentHost.Controls.Add(infoPanel);
 
             int yPos = 10;
             var versionLabel = new Label
@@ -131,7 +189,7 @@ namespace FFVI_tileTool
             };
             infoPanel.Controls.Add(authorLink);
 
-            yPos += 40;
+            yPos += 20;
             var forkedLabel = new Label
             {
                 Text = "Forked by: ",
@@ -177,12 +235,21 @@ namespace FFVI_tileTool
             };
             infoPanel.Controls.Add(appLink);
 
-            // License Tab
-            var licenseTab = new TabPage("License");
-            tabControl.TabPages.Add(licenseTab);
+            licensePanel = new Panel
+            {
+                Dock = DockStyle.Fill,
+                Padding = new Padding(0),
+                BorderStyle = BorderStyle.None
+            };
+            sectionContentHost.Controls.Add(licensePanel);
 
-            var licensePanel = new Panel { Dock = DockStyle.Fill, Padding = new Padding(10) };
-            licenseTab.Controls.Add(licensePanel);
+            var licenseTextWrap = new Panel
+            {
+                Dock = DockStyle.Fill,
+                Padding = new Padding(0, 14, 0, 14),
+                BorderStyle = BorderStyle.None
+            };
+            licensePanel.Controls.Add(licenseTextWrap);
 
             var licenseText = new TextBox
             {
@@ -191,9 +258,47 @@ namespace FFVI_tileTool
                 ScrollBars = ScrollBars.Both,
                 Dock = DockStyle.Fill,
                 Text = GetMITLicense(),
-                Font = new Font("Courier New", 9)
+                Font = new Font("Courier New", 9),
+                BorderStyle = BorderStyle.None
             };
-            licensePanel.Controls.Add(licenseText);
+            licenseTextWrap.Controls.Add(licenseText);
+
+            ShowSection(true);
+        }
+
+        private void ShowSection(bool showInfo)
+        {
+            if (infoPanel == null || licensePanel == null)
+                return;
+
+            infoPanel.Visible = showInfo;
+            licensePanel.Visible = !showInfo;
+
+            if (showInfo)
+                infoPanel.BringToFront();
+            else
+                licensePanel.BringToFront();
+
+            ApplySectionButtonStyles(showInfo);
+        }
+
+        private void ApplySectionButtonStyles(bool infoSelected)
+        {
+            if (infoTabButton == null || licenseTabButton == null)
+                return;
+
+            Color activeBack = isDarkMode ? Color.FromArgb(55, 55, 62) : SystemColors.ControlLightLight;
+            Color inactiveBack = isDarkMode ? Color.FromArgb(40, 40, 46) : SystemColors.Control;
+            Color fore = isDarkMode ? Color.FromArgb(220, 220, 220) : SystemColors.ControlText;
+            Color border = isDarkMode ? Color.FromArgb(70, 70, 78) : SystemColors.ControlDark;
+
+            infoTabButton.BackColor = infoSelected ? activeBack : inactiveBack;
+            infoTabButton.ForeColor = fore;
+            infoTabButton.FlatAppearance.BorderColor = border;
+
+            licenseTabButton.BackColor = infoSelected ? inactiveBack : activeBack;
+            licenseTabButton.ForeColor = fore;
+            licenseTabButton.FlatAppearance.BorderColor = border;
         }
 
         private void ApplyTheme()
@@ -205,6 +310,11 @@ namespace FFVI_tileTool
 
                 foreach (Control control in GetAllControls(this))
                 {
+                    if (control is TableLayoutPanel tableLayout)
+                    {
+                        tableLayout.BackColor = Color.FromArgb(30, 30, 30);
+                        tableLayout.ForeColor = Color.FromArgb(200, 200, 200);
+                    }
                     if (control is TextBox tb)
                     {
                         tb.BackColor = Color.FromArgb(45, 45, 48);
@@ -212,15 +322,18 @@ namespace FFVI_tileTool
                     }
                     else if (control is TabControl tabCtrl)
                     {
-                        tabCtrl.BackColor = Color.FromArgb(45, 45, 48);
+                        tabCtrl.BackColor = Color.FromArgb(35, 35, 40);
                         tabCtrl.ForeColor = Color.FromArgb(200, 200, 200);
                         foreach (TabPage page in tabCtrl.TabPages)
                         {
                             page.BackColor = Color.FromArgb(35, 35, 40);
                             page.ForeColor = Color.FromArgb(200, 200, 200);
                         }
-                        // Apply dark theme to TabControl itself
-                        tabCtrl.ItemSize = new System.Drawing.Size(80, 25);
+                    }
+                    else if (control is TabPage tabPage)
+                    {
+                        tabPage.BackColor = Color.FromArgb(35, 35, 40);
+                        tabPage.ForeColor = Color.FromArgb(200, 200, 200);
                     }
                     else if (control is Label label)
                     {
@@ -237,8 +350,15 @@ namespace FFVI_tileTool
                     else if (control is Panel panel)
                     {
                         panel.BackColor = Color.FromArgb(30, 30, 30);
+                        panel.ForeColor = Color.FromArgb(200, 200, 200);
+                    }
+                    else if (control is Button button)
+                    {
+                        button.ForeColor = Color.FromArgb(220, 220, 220);
                     }
                 }
+
+                ApplySectionButtonStyles(infoPanel != null && infoPanel.Visible);
             }
         }
 
@@ -287,5 +407,6 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.";
         }
+
     }
 }
