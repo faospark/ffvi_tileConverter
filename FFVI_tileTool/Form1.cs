@@ -1651,7 +1651,7 @@ namespace FFVI_tileTool
                 messageLabel.Dock = DockStyle.Fill;
                 messageLabel.Padding = new Padding(14, 12, 14, 8);
                 messageLabel.TextAlign = ContentAlignment.TopLeft;
-                messageLabel.Text = "Warning\n\nThis method is not necessarily recommended if you are not familiar with the tiles.\nProceed with caution.";
+                messageLabel.Text = "Warning\n\nThis method is not necessarily recommended for large number of files or if you are not familiar with the tiles.\nProceed with caution.";
 
                 buttonPanel.Dock = DockStyle.Bottom;
                 buttonPanel.Height = 50;
