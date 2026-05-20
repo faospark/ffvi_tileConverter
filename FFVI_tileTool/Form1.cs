@@ -45,6 +45,7 @@ namespace FFVI_tileTool
         private const string DarkModeStateName = "dark-mode.txt";
         private const string BackupReminderStateName = "backup-reminder-shown.txt";
         private const string Preview050505SettingName = "preview-050505.txt";
+        private const string ParallelPaletteUpdateSettingName = "parallel-palette-update.txt";
         private const string DefaultWindowTitle = "FFVI Old Tile Tool";
         private const int MaxRecentDirectories = 8;
 
@@ -103,6 +104,7 @@ namespace FFVI_tileTool
         private MapCategoryFilter activeMapFilter = MapCategoryFilter.Off;
         private bool backupReminderHandledSession;
         private ToolStripMenuItem previewTreat050505AsTransparentToolStripMenuItem;
+        private ToolStripMenuItem parallelPalleteUpdateToolStripMenuItem;
         private bool previewTreat050505AsTransparent;
         private Bitmap currentSection1SourceBitmap;
         private Bitmap currentSection2SourceBitmap;
@@ -140,6 +142,10 @@ namespace FFVI_tileTool
 
             bool preview050505Enabled = LoadPreview050505State();
             previewTreat050505AsTransparentToolStripMenuItem.Checked = preview050505Enabled;
+
+            bool parallelPaletteUpdateEnabled = LoadParallelPaletteUpdateState();
+            if (parallelPalleteUpdateToolStripMenuItem != null)
+                parallelPalleteUpdateToolStripMenuItem.Checked = parallelPaletteUpdateEnabled;
 
             recentDirectories = LoadRecentDirectories();
             RefreshRecentDirectoriesMenu();
@@ -254,6 +260,14 @@ namespace FFVI_tileTool
                 if (!string.IsNullOrWhiteSpace(selectedPath) && File.Exists(selectedPath))
                     RenderImage(selectedPath);
             }
+        }
+
+        private void parallelPalleteUpdateToolStripMenuItem_CheckedChanged(object sender, EventArgs e)
+        {
+            if (parallelPalleteUpdateToolStripMenuItem == null)
+                return;
+
+            SaveParallelPaletteUpdateState(parallelPalleteUpdateToolStripMenuItem.Checked);
         }
 
         private void recentDirectoryToolStripMenuItem_Click(object sender, EventArgs e)
@@ -908,6 +922,11 @@ namespace FFVI_tileTool
             return Path.Combine(Application.UserAppDataPath, Preview050505SettingName);
         }
 
+        private string GetParallelPaletteUpdateStateFilePath()
+        {
+            return Path.Combine(Application.UserAppDataPath, ParallelPaletteUpdateSettingName);
+        }
+
         private string GetBackupReminderStateFilePath()
         {
             return Path.Combine(Application.UserAppDataPath, BackupReminderStateName);
@@ -1221,6 +1240,35 @@ namespace FFVI_tileTool
             try
             {
                 string stateFilePath = GetPreview050505StateFilePath();
+                if (!File.Exists(stateFilePath)) return false;
+
+                string value = File.ReadAllText(stateFilePath).Trim();
+                return value == "1" || value.Equals("true", StringComparison.OrdinalIgnoreCase);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private void SaveParallelPaletteUpdateState(bool enabled)
+        {
+            try
+            {
+                Directory.CreateDirectory(Application.UserAppDataPath);
+                File.WriteAllText(GetParallelPaletteUpdateStateFilePath(), enabled ? "1" : "0");
+            }
+            catch
+            {
+                // Non-fatal: app should still work if state can't be persisted.
+            }
+        }
+
+        private bool LoadParallelPaletteUpdateState()
+        {
+            try
+            {
+                string stateFilePath = GetParallelPaletteUpdateStateFilePath();
                 if (!File.Exists(stateFilePath)) return false;
 
                 string value = File.ReadAllText(stateFilePath).Trim();
@@ -2168,7 +2216,8 @@ namespace FFVI_tileTool
                 else return;
 
             string filePath = st.Where(x => Path.GetFileName(x) == (string)listBox1.SelectedValue).First();
-            if (!TryImportSection1Image(filePath, path, out string error))
+            bool parallelPaletteUpdateEnabled = parallelPalleteUpdateToolStripMenuItem != null && parallelPalleteUpdateToolStripMenuItem.Checked;
+            if (!TryImportSection1Image(filePath, path, parallelPaletteUpdateEnabled, out string error))
             {
                 ShowAppMessage(error ?? "Import failed.", "Import warning", MessageBoxIcon.Warning);
                 return;
@@ -2191,7 +2240,8 @@ namespace FFVI_tileTool
                 else return;
 
             string filePath = st.Where(x => Path.GetFileName(x) == (string)listBox1.SelectedValue).First();
-            if (!TryImportSection2Image(filePath, path, out string error))
+            bool parallelPaletteUpdateEnabled = parallelPalleteUpdateToolStripMenuItem != null && parallelPalleteUpdateToolStripMenuItem.Checked;
+            if (!TryImportSection2Image(filePath, path, parallelPaletteUpdateEnabled, out string error))
             {
                 ShowAppMessage(error ?? "Import failed.", "Import warning", MessageBoxIcon.Warning);
                 return;
@@ -2349,7 +2399,7 @@ namespace FFVI_tileTool
             }
         }
 
-        private bool TryImportSection1Image(string filePath, string imagePath, out string error)
+        private bool TryImportSection1Image(string filePath, string imagePath, bool applyParallelPaletteUpdate, out string error)
         {
             error = null;
             Bitmap bmp = null;
@@ -2375,6 +2425,13 @@ namespace FFVI_tileTool
                 int section1SearchEnd = section2PaletteOffset >= 0 ? section2PaletteOffset : fileBuffer.Length;
                 List<int> section1PaletteOffsets = FindPaletteOffsetsInRange(fileBuffer, originalPalette, 0, section1SearchEnd);
 
+                if (applyParallelPaletteUpdate && section2PaletteOffset >= 0)
+                {
+                    byte[] section2Palette = ReadPaletteBlock(fileBuffer, section2PaletteOffset);
+                    ApplyParallelPaletteUpdate(originalPalette, palBuffer, section2Palette);
+                    Buffer.BlockCopy(section2Palette, 0, fileBuffer, section2PaletteOffset, 1024);
+                }
+
                 Buffer.BlockCopy(sectionBuffer, 0, fileBuffer, 0, sectionBuffer.Length);
                 ApplyPaletteAtOffsets(fileBuffer, section1PaletteOffsets, palBuffer);
                 File.WriteAllBytes(filePath, fileBuffer);
@@ -2391,7 +2448,7 @@ namespace FFVI_tileTool
             }
         }
 
-        private bool TryImportSection2Image(string filePath, string imagePath, out string error)
+        private bool TryImportSection2Image(string filePath, string imagePath, bool applyParallelPaletteUpdate, out string error)
         {
             error = null;
             Bitmap bmp = null;
@@ -2412,6 +2469,15 @@ namespace FFVI_tileTool
                 Buffer.BlockCopy(pixelBuffer, 0, sectionBuffer, 1024, 512 * bmp.Height);
 
                 byte[] fileBuffer = File.ReadAllBytes(filePath);
+                int section2PaletteOffset = GetSection2PaletteOffset(fileBuffer.Length);
+                if (applyParallelPaletteUpdate && section2PaletteOffset >= 0)
+                {
+                    byte[] section1Palette = ReadPaletteBlock(fileBuffer, 0);
+                    byte[] originalSection2Palette = ReadPaletteBlock(fileBuffer, section2PaletteOffset);
+                    ApplyParallelPaletteUpdate(originalSection2Palette, palBuffer, section1Palette);
+                    Buffer.BlockCopy(section1Palette, 0, fileBuffer, 0, 1024);
+                }
+
                 Buffer.BlockCopy(sectionBuffer, 0, fileBuffer, fileBuffer.Length - 0x80400, sectionBuffer.Length);
                 File.WriteAllBytes(filePath, fileBuffer);
                 return true;
@@ -2530,6 +2596,42 @@ namespace FFVI_tileTool
 
                 Buffer.BlockCopy(newPalette, 0, fileBuffer, offset, 1024);
             }
+        }
+
+        private static void ApplyParallelPaletteUpdate(byte[] originalSourcePalette, byte[] updatedSourcePalette, byte[] targetPalette)
+        {
+            if (originalSourcePalette == null || updatedSourcePalette == null || targetPalette == null)
+                return;
+
+            if (originalSourcePalette.Length < 1024 || updatedSourcePalette.Length < 1024 || targetPalette.Length < 1024)
+                return;
+
+            Dictionary<string, List<int>> targetIndexesByColor = BuildPaletteIndexMapByRgb(targetPalette);
+            for (int sourceIndex = 0; sourceIndex < 256; sourceIndex++)
+            {
+                string originalColor = GetPaletteRgbAtIndex(originalSourcePalette, sourceIndex);
+                if (!targetIndexesByColor.TryGetValue(originalColor, out List<int> linkedTargetIndexes))
+                    continue;
+
+                int sourceOffset = sourceIndex * 4;
+                foreach (int targetIndex in linkedTargetIndexes)
+                {
+                    int targetOffset = targetIndex * 4;
+                    targetPalette[targetOffset + 0] = updatedSourcePalette[sourceOffset + 0];
+                    targetPalette[targetOffset + 1] = updatedSourcePalette[sourceOffset + 1];
+                    targetPalette[targetOffset + 2] = updatedSourcePalette[sourceOffset + 2];
+                    targetPalette[targetOffset + 3] = updatedSourcePalette[sourceOffset + 3];
+                }
+            }
+        }
+
+        private static string GetPaletteRgbAtIndex(byte[] palette, int index)
+        {
+            int baseOffset = index * 4;
+            byte blue = palette[baseOffset + 0];
+            byte green = palette[baseOffset + 1];
+            byte red = palette[baseOffset + 2];
+            return $"{red:X2}{green:X2}{blue:X2}";
         }
 
         private void UpdatePaletteInfo(string filePath)
@@ -2976,7 +3078,7 @@ namespace FFVI_tileTool
 
                     if (section1Image != null)
                     {
-                        if (TryImportSection1Image(filePath, section1Image, out string section1Error))
+                        if (TryImportSection1Image(filePath, section1Image, false, out string section1Error))
                         {
                             importedSection1++;
                             fileUpdated = true;
@@ -2990,7 +3092,7 @@ namespace FFVI_tileTool
 
                     if (section2Image != null)
                     {
-                        if (TryImportSection2Image(filePath, section2Image, out string section2Error))
+                        if (TryImportSection2Image(filePath, section2Image, false, out string section2Error))
                         {
                             importedSection2++;
                             fileUpdated = true;

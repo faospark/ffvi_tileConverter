@@ -40,6 +40,7 @@ namespace FFVI_tileTool
             this.massImportToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.settingsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.previewTreat050505AsTransparentToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.parallelPalleteUpdateToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.filtersToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.filterOffToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.filterSnowTilesToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -175,6 +176,7 @@ namespace FFVI_tileTool
             //
             this.settingsToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.previewTreat050505AsTransparentToolStripMenuItem,
+            this.parallelPalleteUpdateToolStripMenuItem,
             this.darkModeToolStripMenuItem});
             this.settingsToolStripMenuItem.Name = "settingsToolStripMenuItem";
             this.settingsToolStripMenuItem.Size = new System.Drawing.Size(61, 20);
@@ -187,6 +189,14 @@ namespace FFVI_tileTool
             this.previewTreat050505AsTransparentToolStripMenuItem.Size = new System.Drawing.Size(299, 22);
             this.previewTreat050505AsTransparentToolStripMenuItem.Text = "Preview 05/05/05 As Transparent";
             this.previewTreat050505AsTransparentToolStripMenuItem.CheckedChanged += new System.EventHandler(this.previewTreat050505AsTransparentToolStripMenuItem_CheckedChanged);
+            //
+            // parallelPalleteUpdateToolStripMenuItem
+            //
+            this.parallelPalleteUpdateToolStripMenuItem.CheckOnClick = true;
+            this.parallelPalleteUpdateToolStripMenuItem.Name = "parallelPalleteUpdateToolStripMenuItem";
+            this.parallelPalleteUpdateToolStripMenuItem.Size = new System.Drawing.Size(299, 22);
+            this.parallelPalleteUpdateToolStripMenuItem.Text = "Experimental Parallel Pallete Update";
+            this.parallelPalleteUpdateToolStripMenuItem.CheckedChanged += new System.EventHandler(this.parallelPalleteUpdateToolStripMenuItem_CheckedChanged);
             //
             // filtersToolStripMenuItem
             //
