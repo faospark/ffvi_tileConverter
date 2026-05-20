@@ -539,7 +539,7 @@ namespace FFVI_tileTool
             this.groupBoxSharedPaletteInfo.Controls.Add(this.dataGridViewSharedPaletteInfo);
             this.groupBoxSharedPaletteInfo.Location = new System.Drawing.Point(1094, 0);
             this.groupBoxSharedPaletteInfo.Name = "groupBoxSharedPaletteInfo";
-            this.groupBoxSharedPaletteInfo.Size = new System.Drawing.Size(547, 260);
+            this.groupBoxSharedPaletteInfo.Size = new System.Drawing.Size(547, 747);
             this.groupBoxSharedPaletteInfo.TabIndex = 4;
             this.groupBoxSharedPaletteInfo.TabStop = false;
             this.groupBoxSharedPaletteInfo.Text = "Shared Pallete Information";
