@@ -78,6 +78,11 @@ namespace FFVI_tileTool
             this.button3 = new System.Windows.Forms.Button();
             this.button4 = new System.Windows.Forms.Button();
             this.buttonSection2PaletteInfo = new System.Windows.Forms.Button();
+            this.groupBoxSharedPaletteInfo = new System.Windows.Forms.GroupBox();
+            this.dataGridViewSharedPaletteInfo = new System.Windows.Forms.DataGridView();
+            this.dataGridViewTextBoxColumnSharedColor = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.dataGridViewTextBoxColumnSection1Index = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.dataGridViewTextBoxColumnSection2Index = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.menuStrip1.SuspendLayout();
             this.statusStrip1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
@@ -96,6 +101,8 @@ namespace FFVI_tileTool
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             this.groupBox1.SuspendLayout();
             this.groupBox2.SuspendLayout();
+            this.groupBoxSharedPaletteInfo.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.dataGridViewSharedPaletteInfo)).BeginInit();
             this.SuspendLayout();
             // 
             // menuStrip1
@@ -367,11 +374,14 @@ namespace FFVI_tileTool
             // 
             // splitContainer2.Panel1
             // 
+            this.splitContainer2.Panel1.AutoScroll = true;
             this.splitContainer2.Panel1.Controls.Add(this.groupBox4);
             this.splitContainer2.Panel1.Controls.Add(this.groupBox3);
+            this.splitContainer2.Panel1.Controls.Add(this.groupBoxSharedPaletteInfo);
             //
             // splitContainer2.Panel2
             //
+            this.splitContainer2.Panel2.AutoScroll = true;
             this.splitContainer2.Panel2.Controls.Add(this.groupBox1);
             this.splitContainer2.Panel2.Controls.Add(this.groupBox2);
             this.splitContainer2.Size = new System.Drawing.Size(1094, 646);
@@ -513,6 +523,59 @@ namespace FFVI_tileTool
             this.groupBox2.TabStop = false;
             this.groupBox2.Text = "I/O controls Section 2";
             // 
+            // groupBoxSharedPaletteInfo
+            // 
+            this.groupBoxSharedPaletteInfo.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)));
+            this.groupBoxSharedPaletteInfo.Controls.Add(this.dataGridViewSharedPaletteInfo);
+            this.groupBoxSharedPaletteInfo.Location = new System.Drawing.Point(1094, 0);
+            this.groupBoxSharedPaletteInfo.Name = "groupBoxSharedPaletteInfo";
+            this.groupBoxSharedPaletteInfo.Size = new System.Drawing.Size(547, 260);
+            this.groupBoxSharedPaletteInfo.TabIndex = 4;
+            this.groupBoxSharedPaletteInfo.TabStop = false;
+            this.groupBoxSharedPaletteInfo.Text = "Shared Pallete Information";
+            // 
+            // dataGridViewSharedPaletteInfo
+            // 
+            this.dataGridViewSharedPaletteInfo.AllowUserToAddRows = false;
+            this.dataGridViewSharedPaletteInfo.AllowUserToDeleteRows = false;
+            this.dataGridViewSharedPaletteInfo.AllowUserToResizeRows = false;
+            this.dataGridViewSharedPaletteInfo.AutoSizeColumnsMode = System.Windows.Forms.DataGridViewAutoSizeColumnsMode.Fill;
+            this.dataGridViewSharedPaletteInfo.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+            this.dataGridViewSharedPaletteInfo.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
+            this.dataGridViewTextBoxColumnSharedColor,
+            this.dataGridViewTextBoxColumnSection1Index,
+            this.dataGridViewTextBoxColumnSection2Index});
+            this.dataGridViewSharedPaletteInfo.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.dataGridViewSharedPaletteInfo.Location = new System.Drawing.Point(3, 16);
+            this.dataGridViewSharedPaletteInfo.MultiSelect = false;
+            this.dataGridViewSharedPaletteInfo.Name = "dataGridViewSharedPaletteInfo";
+            this.dataGridViewSharedPaletteInfo.ReadOnly = true;
+            this.dataGridViewSharedPaletteInfo.RowHeadersVisible = false;
+            this.dataGridViewSharedPaletteInfo.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
+            this.dataGridViewSharedPaletteInfo.Size = new System.Drawing.Size(541, 241);
+            this.dataGridViewSharedPaletteInfo.TabIndex = 0;
+            // 
+            // dataGridViewTextBoxColumnSharedColor
+            // 
+            this.dataGridViewTextBoxColumnSharedColor.FillWeight = 70F;
+            this.dataGridViewTextBoxColumnSharedColor.HeaderText = "Color (RRGGBB)";
+            this.dataGridViewTextBoxColumnSharedColor.Name = "dataGridViewTextBoxColumnSharedColor";
+            this.dataGridViewTextBoxColumnSharedColor.ReadOnly = true;
+            // 
+            // dataGridViewTextBoxColumnSection1Index
+            // 
+            this.dataGridViewTextBoxColumnSection1Index.FillWeight = 115F;
+            this.dataGridViewTextBoxColumnSection1Index.HeaderText = "Section 1 Index";
+            this.dataGridViewTextBoxColumnSection1Index.Name = "dataGridViewTextBoxColumnSection1Index";
+            this.dataGridViewTextBoxColumnSection1Index.ReadOnly = true;
+            // 
+            // dataGridViewTextBoxColumnSection2Index
+            // 
+            this.dataGridViewTextBoxColumnSection2Index.FillWeight = 115F;
+            this.dataGridViewTextBoxColumnSection2Index.HeaderText = "Section 2 Index";
+            this.dataGridViewTextBoxColumnSection2Index.Name = "dataGridViewTextBoxColumnSection2Index";
+            this.dataGridViewTextBoxColumnSection2Index.ReadOnly = true;
+            // 
             // button3
             // 
             this.button3.Location = new System.Drawing.Point(172, 19);
@@ -588,12 +651,15 @@ namespace FFVI_tileTool
             this.groupBox4.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox2)).EndInit();
             this.panel2.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)(this.dataGridViewSharedPaletteInfo)).EndInit();
             this.groupBox3.ResumeLayout(false);
             this.panel1.ResumeLayout(false);
             this.panel1.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).EndInit();
             this.groupBox1.ResumeLayout(false);
             this.groupBox2.ResumeLayout(false);
+            this.groupBoxSharedPaletteInfo.ResumeLayout(false);
+            this.groupBoxSharedPaletteInfo.PerformLayout();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -650,5 +716,10 @@ namespace FFVI_tileTool
         private System.Windows.Forms.ContextMenuStrip previewSection1ContextMenuStrip;
         private System.Windows.Forms.ToolStripMenuItem previewSection1ExportImageToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem previewSection1ImportImageToolStripMenuItem;
+        private System.Windows.Forms.GroupBox groupBoxSharedPaletteInfo;
+        private System.Windows.Forms.DataGridView dataGridViewSharedPaletteInfo;
+        private System.Windows.Forms.DataGridViewTextBoxColumn dataGridViewTextBoxColumnSharedColor;
+        private System.Windows.Forms.DataGridViewTextBoxColumn dataGridViewTextBoxColumnSection1Index;
+        private System.Windows.Forms.DataGridViewTextBoxColumn dataGridViewTextBoxColumnSection2Index;
     }
 }

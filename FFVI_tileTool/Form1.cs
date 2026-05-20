@@ -99,6 +99,7 @@ namespace FFVI_tileTool
         private List<int> currentSection2PaletteOffsets = new List<int>();
         private byte[] currentSection1Palette = new byte[1024];
         private byte[] currentSection2Palette = new byte[1024];
+        private bool currentHasSection2Palette;
         private MapCategoryFilter activeMapFilter = MapCategoryFilter.Off;
         private bool backupReminderHandledSession;
         private ToolStripMenuItem previewTreat050505AsTransparentToolStripMenuItem;
@@ -1758,6 +1759,30 @@ namespace FFVI_tileTool
                 comboBox.ForeColor = foreground;
                 comboBox.FlatStyle = darkMode ? FlatStyle.Flat : FlatStyle.Standard;
             }
+            else if (control is DataGridView dataGridView)
+            {
+                dataGridView.BackgroundColor = surface;
+                dataGridView.GridColor = darkMode ? System.Drawing.Color.FromArgb(70, 70, 74) : System.Drawing.Color.FromArgb(210, 210, 210);
+                dataGridView.BorderStyle = darkMode ? BorderStyle.FixedSingle : BorderStyle.Fixed3D;
+                dataGridView.EnableHeadersVisualStyles = false;
+
+                dataGridView.ColumnHeadersDefaultCellStyle.BackColor = darkMode ? System.Drawing.Color.FromArgb(55, 55, 60) : SystemColors.Control;
+                dataGridView.ColumnHeadersDefaultCellStyle.ForeColor = foreground;
+                dataGridView.ColumnHeadersDefaultCellStyle.SelectionBackColor = darkMode ? System.Drawing.Color.FromArgb(55, 55, 60) : SystemColors.Control;
+                dataGridView.ColumnHeadersDefaultCellStyle.SelectionForeColor = foreground;
+
+                dataGridView.DefaultCellStyle.BackColor = surface;
+                dataGridView.DefaultCellStyle.ForeColor = foreground;
+                dataGridView.DefaultCellStyle.SelectionBackColor = darkMode ? System.Drawing.Color.FromArgb(63, 63, 70) : SystemColors.Highlight;
+                dataGridView.DefaultCellStyle.SelectionForeColor = darkMode ? foreground : SystemColors.HighlightText;
+
+                dataGridView.RowsDefaultCellStyle.BackColor = surface;
+                dataGridView.RowsDefaultCellStyle.ForeColor = foreground;
+                dataGridView.RowsDefaultCellStyle.SelectionBackColor = darkMode ? System.Drawing.Color.FromArgb(63, 63, 70) : SystemColors.Highlight;
+                dataGridView.RowsDefaultCellStyle.SelectionForeColor = darkMode ? foreground : SystemColors.HighlightText;
+
+                dataGridView.Invalidate();
+            }
             else if (control is PictureBox pictureBox)
             {
                 pictureBox.BackColor = surface;
@@ -2517,6 +2542,8 @@ namespace FFVI_tileTool
                 currentSection2PaletteOffsets = new List<int>();
                 currentSection1Palette = new byte[1024];
                 currentSection2Palette = new byte[1024];
+                currentHasSection2Palette = false;
+                UpdateSharedPaletteInfoDisplay();
                 return;
             }
 
@@ -2529,6 +2556,8 @@ namespace FFVI_tileTool
                 currentSection2PaletteOffsets = new List<int>();
                 currentSection1Palette = new byte[1024];
                 currentSection2Palette = new byte[1024];
+                currentHasSection2Palette = false;
+                UpdateSharedPaletteInfoDisplay();
                 return;
             }
 
@@ -2538,6 +2567,7 @@ namespace FFVI_tileTool
 
             currentSection1Palette = Section1Palette;
             currentSection2Palette = Section2Palette;
+            currentHasSection2Palette = Section2PaletteOffset >= 0;
 
             int Section1SearchEnd = Section2PaletteOffset >= 0 ? Section2PaletteOffset : fileBuffer.Length;
             currentSection1PaletteOffsets = FindPaletteOffsetsInRange(fileBuffer, Section1Palette, 0, Section1SearchEnd);
@@ -2547,6 +2577,73 @@ namespace FFVI_tileTool
             buttonSection2PaletteInfo.Text = Section2PaletteOffset >= 0
                 ? $"Image Info 0x{Section2PaletteOffset:X6}"
                 : "Image Info: n/a";
+
+            UpdateSharedPaletteInfoDisplay();
+        }
+
+        private void UpdateSharedPaletteInfoDisplay()
+        {
+            if (dataGridViewSharedPaletteInfo == null)
+                return;
+
+            dataGridViewSharedPaletteInfo.SuspendLayout();
+            dataGridViewSharedPaletteInfo.Rows.Clear();
+
+            if (!currentHasSection2Palette)
+            {
+                dataGridViewSharedPaletteInfo.Rows.Add("n/a", "Section 2 palette is not available", string.Empty);
+                dataGridViewSharedPaletteInfo.ResumeLayout();
+                return;
+            }
+
+            Dictionary<string, List<int>> section1ByColor = BuildPaletteIndexMapByRgb(currentSection1Palette);
+            Dictionary<string, List<int>> section2ByColor = BuildPaletteIndexMapByRgb(currentSection2Palette);
+
+            int sharedCount = 0;
+            foreach (string color in section1ByColor.Keys.OrderBy(k => k, StringComparer.Ordinal))
+            {
+                if (!section2ByColor.TryGetValue(color, out List<int> section2Indexes))
+                    continue;
+
+                List<int> section1Indexes = section1ByColor[color];
+                dataGridViewSharedPaletteInfo.Rows.Add(color, string.Join(",", section1Indexes), string.Join(",", section2Indexes));
+                sharedCount++;
+            }
+
+            if (sharedCount == 0)
+            {
+                dataGridViewSharedPaletteInfo.Rows.Add("n/a", "No shared colors found", string.Empty);
+                dataGridViewSharedPaletteInfo.ResumeLayout();
+                return;
+            }
+
+            dataGridViewSharedPaletteInfo.ResumeLayout();
+        }
+
+        private static Dictionary<string, List<int>> BuildPaletteIndexMapByRgb(byte[] palette)
+        {
+            Dictionary<string, List<int>> byColor = new Dictionary<string, List<int>>(StringComparer.Ordinal);
+            if (palette == null || palette.Length < 1024)
+                return byColor;
+
+            for (int i = 0; i < 256; i++)
+            {
+                int baseOffset = i * 4;
+                byte blue = palette[baseOffset + 0];
+                byte green = palette[baseOffset + 1];
+                byte red = palette[baseOffset + 2];
+                string rgb = $"{red:X2}{green:X2}{blue:X2}";
+
+                if (!byColor.TryGetValue(rgb, out List<int> indexes))
+                {
+                    indexes = new List<int>();
+                    byColor[rgb] = indexes;
+                }
+
+                indexes.Add(i);
+            }
+
+            return byColor;
         }
 
         private void ShowPaletteOffsets(string title, List<int> offsets, byte[] palette)
