@@ -2472,10 +2472,17 @@ namespace FFVI_tileTool
                 int section2PaletteOffset = GetSection2PaletteOffset(fileBuffer.Length);
                 if (applyParallelPaletteUpdate && section2PaletteOffset >= 0)
                 {
-                    byte[] section1Palette = ReadPaletteBlock(fileBuffer, 0);
+                    byte[] originalSection1Palette = ReadPaletteBlock(fileBuffer, 0);
                     byte[] originalSection2Palette = ReadPaletteBlock(fileBuffer, section2PaletteOffset);
-                    ApplyParallelPaletteUpdate(originalSection2Palette, palBuffer, section1Palette);
-                    Buffer.BlockCopy(section1Palette, 0, fileBuffer, 0, 1024);
+
+                    // Build updated Section 1 palette by syncing shared colors from Section 2.
+                    byte[] updatedSection1Palette = (byte[])originalSection1Palette.Clone();
+                    ApplyParallelPaletteUpdate(originalSection2Palette, palBuffer, updatedSection1Palette);
+
+                    // Find every mirror copy of Section 1's palette in the file and update them all.
+                    int section1SearchEnd = section2PaletteOffset;
+                    List<int> section1PaletteOffsets = FindPaletteOffsetsInRange(fileBuffer, originalSection1Palette, 0, section1SearchEnd);
+                    ApplyPaletteAtOffsets(fileBuffer, section1PaletteOffsets, updatedSection1Palette);
                 }
 
                 Buffer.BlockCopy(sectionBuffer, 0, fileBuffer, fileBuffer.Length - 0x80400, sectionBuffer.Length);
