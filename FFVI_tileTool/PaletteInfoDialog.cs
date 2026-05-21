@@ -14,6 +14,7 @@ namespace FFVI_tileTool
         public PaletteInfoDialog(string title, List<int> offsetList, byte[] palette, bool darkMode = false)
         {
             InitializeComponent();
+            Form1.ApplyDefaultAppFont(this);
             this.Text = title;
             this.Icon = Form1.GetApplicationIcon();
             this.paletteBuffer = palette ?? new byte[1024];

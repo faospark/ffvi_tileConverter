@@ -49,6 +49,7 @@ namespace FFVI_tileTool
         private const string ParallelPaletteUpdateSettingName = "parallel-palette-update.txt";
         private const string DefaultWindowTitle = "FFVI Old Tile Tool";
         private const int MaxRecentDirectories = 8;
+        private static readonly Font DefaultAppUiFont = new Font("Segoe UI", 9F, FontStyle.Regular, GraphicsUnit.Point);
 
         private static readonly HashSet<string> SnowTileMaps = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
@@ -165,6 +166,7 @@ namespace FFVI_tileTool
         {
             InitializeComponent();
             InitializeEnhancedDarkModeApis();
+            ApplyDefaultAppFont(this);
             Icon = GetApplicationIcon();
             Text = DefaultWindowTitle;
 
@@ -181,6 +183,9 @@ namespace FFVI_tileTool
             comboBoxFileFilter.SelectedIndex = 0;
             listBox1.DrawMode = DrawMode.OwnerDrawFixed;
             listBox1.DrawItem += listBox1_DrawItem;
+            listBox1.ItemHeight = Math.Max(
+                listBox1.ItemHeight,
+                TextRenderer.MeasureText("Ag", listBox1.Font).Height + 4);
 
             bool darkModeEnabled = LoadDarkModeState();
             darkModeToolStripMenuItem.Checked = darkModeEnabled;
@@ -1806,6 +1811,47 @@ namespace FFVI_tileTool
             }
         }
 
+        public static void ApplyDefaultAppFont(Control root)
+        {
+            if (root == null)
+                return;
+
+            ApplyDefaultAppFontToControl(root);
+            foreach (Control child in root.Controls)
+                ApplyDefaultAppFont(child);
+        }
+
+        private static void ApplyDefaultAppFontToControl(Control control)
+        {
+            if (control?.Font == null || IsMonospaceFont(control.Font))
+                return;
+
+            Font currentFont = control.Font;
+            if (string.Equals(currentFont.FontFamily.Name, DefaultAppUiFont.FontFamily.Name, StringComparison.OrdinalIgnoreCase))
+                return;
+
+            control.Font = new Font(
+                DefaultAppUiFont.FontFamily,
+                currentFont.Size,
+                currentFont.Style,
+                currentFont.Unit,
+                currentFont.GdiCharSet,
+                currentFont.GdiVerticalFont);
+        }
+
+        private static bool IsMonospaceFont(Font font)
+        {
+            if (font == null || font.FontFamily == null)
+                return false;
+
+            string familyName = font.FontFamily.Name;
+            return string.Equals(familyName, FontFamily.GenericMonospace.Name, StringComparison.OrdinalIgnoreCase)
+                || familyName.IndexOf("mono", StringComparison.OrdinalIgnoreCase) >= 0
+                || string.Equals(familyName, "Consolas", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(familyName, "Courier New", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(familyName, "Lucida Console", StringComparison.OrdinalIgnoreCase);
+        }
+
         private sealed class NativeDialogThemeScope : IDisposable
         {
             private readonly bool darkMode;
@@ -2059,6 +2105,8 @@ namespace FFVI_tileTool
 
         private void ApplyThemeToControlTree(Control control, System.Drawing.Color background, System.Drawing.Color surface, System.Drawing.Color foreground, bool darkMode)
         {
+            ApplyDefaultAppFontToControl(control);
+
             if (control is MenuStrip)
             {
                 // Menu strip colors are handled by ApplyThemeToMenu.
