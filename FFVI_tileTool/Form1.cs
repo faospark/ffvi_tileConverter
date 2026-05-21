@@ -8,6 +8,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.IO.Compression;
+using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
@@ -180,6 +181,8 @@ namespace FFVI_tileTool
             });
             comboBoxFileFilter.DrawMode = DrawMode.OwnerDrawFixed;
             comboBoxFileFilter.DrawItem += comboBoxFileFilter_DrawItem;
+            comboBoxFileFilter.Resize += comboBoxFileFilter_VisualRefresh;
+            comboBoxFileFilter.DropDownClosed += comboBoxFileFilter_VisualRefresh;
             comboBoxFileFilter.SelectedIndex = 0;
             listBox1.DrawMode = DrawMode.OwnerDrawFixed;
             listBox1.DrawItem += listBox1_DrawItem;
@@ -1382,22 +1385,24 @@ namespace FFVI_tileTool
              return control is ListBox ||
                  control is Panel ||
                    control is TextBoxBase ||
-                   control is ComboBox ||
                    control is DataGridView;
         }
 
         private static void DataGridViewSharedPalette_Resize(object sender, EventArgs e)
         {
-            if (!(sender is DataGridView dgv) || dgv.Columns.Count < 3)
+            if (!(sender is DataGridView dgv) || dgv.Columns.Count < 4)
                 return;
 
-            // Proportional widths matching designer FillWeights: 70, 115, 115 (total 300).
-            // Always subtract the vertical scrollbar width to keep columns stable.
+            // Keep a fixed preview swatch column, then distribute remaining width by 70/115/115.
             int scrollBarWidth = SystemInformation.VerticalScrollBarWidth;
             int available = Math.Max(0, dgv.ClientSize.Width - scrollBarWidth);
-            dgv.Columns[0].Width = (int)(available * 70f / 300f);
-            dgv.Columns[1].Width = (int)(available * 115f / 300f);
-            dgv.Columns[2].Width = available - dgv.Columns[0].Width - dgv.Columns[1].Width;
+            int previewWidth = 28;
+            int remaining = Math.Max(0, available - previewWidth);
+
+            dgv.Columns[0].Width = previewWidth;
+            dgv.Columns[1].Width = (int)(remaining * 70f / 300f);
+            dgv.Columns[2].Width = (int)(remaining * 115f / 300f);
+            dgv.Columns[3].Width = remaining - dgv.Columns[1].Width - dgv.Columns[2].Width;
         }
 
         private static void GroupBox_PaintDarkMode(object sender, PaintEventArgs e)
@@ -2121,7 +2126,7 @@ namespace FFVI_tileTool
             {
                 comboBox.BackColor = surface;
                 comboBox.ForeColor = foreground;
-                comboBox.FlatStyle = darkMode ? FlatStyle.Flat : FlatStyle.Standard;
+                comboBox.FlatStyle = darkMode ? FlatStyle.Popup : FlatStyle.Standard;
             }
             else if (control is DataGridView dataGridView)
             {
@@ -2506,6 +2511,49 @@ namespace FFVI_tileTool
             button4_Click(sender, e);
         }
 
+        private string PickImportImagePath()
+        {
+            using (OpenFileDialog ofd = new OpenFileDialog()
+            {
+                Filter = "Image files (*.png;*.bmp)|*.png;*.bmp|PNG files (*.png)|*.png|BMP files (*.bmp)|*.bmp",
+                Multiselect = false
+            })
+            {
+                if (ShowThemedCommonDialog(ofd, this) != DialogResult.OK)
+                    return null;
+
+                return ofd.FileName;
+            }
+        }
+
+        private bool ImportSelectedSectionImage(bool isSection1, bool applyParallelPaletteUpdate)
+        {
+            string imagePath = PickImportImagePath();
+            if (string.IsNullOrWhiteSpace(imagePath))
+                return false;
+
+            string filePath = GetSelectedMapFilePath();
+            if (string.IsNullOrWhiteSpace(filePath))
+            {
+                ShowAppMessage("Unable to locate the selected file.", "Import warning", MessageBoxIcon.Warning);
+                return false;
+            }
+
+            string error;
+            bool success = isSection1
+                ? TryImportSection1Image(filePath, imagePath, applyParallelPaletteUpdate, out error)
+                : TryImportSection2Image(filePath, imagePath, applyParallelPaletteUpdate, out error);
+
+            if (!success)
+            {
+                ShowAppMessage(error ?? "Import failed.", "Import warning", MessageBoxIcon.Warning);
+                return false;
+            }
+
+            RenderImage(filePath);
+            return true;
+        }
+
         private void ExportImage(Image image, string defaultBaseFileName)
         {
             if (listBox1.Items.Count == 0 || image == null) return;
@@ -2528,50 +2576,32 @@ namespace FFVI_tileTool
 
         private void button2_Click(object sender, EventArgs e)
         {
-            string path = "";
-            using (OpenFileDialog ofd = new OpenFileDialog() { Filter = "Image files (*.png;*.bmp)|*.png;*.bmp|PNG files (*.png)|*.png|BMP files (*.bmp)|*.bmp", Multiselect = false })
-                if (ShowThemedCommonDialog(ofd, this) == DialogResult.OK)
-                    path = ofd.FileName;
-                else return;
-
-            string filePath = st.Where(x => Path.GetFileName(x) == (string)listBox1.SelectedValue).First();
-            bool parallelPaletteUpdateEnabled = parallelPalleteUpdateToolStripMenuItem != null && parallelPalleteUpdateToolStripMenuItem.Checked;
-            if (!TryImportSection1Image(filePath, path, parallelPaletteUpdateEnabled, out string error))
-            {
-                ShowAppMessage(error ?? "Import failed.", "Import warning", MessageBoxIcon.Warning);
-                return;
-            }
-
-            RenderImage(filePath);
+            ImportSelectedSectionImage(true, false);
         }
 
         private void previewSection1ImportImageToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            button2_Click(sender, e);
+            ImportSelectedSectionImage(true, false);
+        }
+
+        private void previewSection1ImportWithSyncIdenticalColorsToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            ImportSelectedSectionImage(true, true);
         }
 
         private void button3_Click(object sender, EventArgs e)
         {
-            string path = "";
-            using (OpenFileDialog ofd = new OpenFileDialog() { Filter = "Image files (*.png;*.bmp)|*.png;*.bmp|PNG files (*.png)|*.png|BMP files (*.bmp)|*.bmp", Multiselect = false })
-                if (ShowThemedCommonDialog(ofd, this) == DialogResult.OK)
-                    path = ofd.FileName;
-                else return;
-
-            string filePath = st.Where(x => Path.GetFileName(x) == (string)listBox1.SelectedValue).First();
-            bool parallelPaletteUpdateEnabled = parallelPalleteUpdateToolStripMenuItem != null && parallelPalleteUpdateToolStripMenuItem.Checked;
-            if (!TryImportSection2Image(filePath, path, parallelPaletteUpdateEnabled, out string error))
-            {
-                ShowAppMessage(error ?? "Import failed.", "Import warning", MessageBoxIcon.Warning);
-                return;
-            }
-
-            RenderImage(filePath);
+            ImportSelectedSectionImage(false, false);
         }
 
         private void previewSection2ImportImageToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            button3_Click(sender, e);
+            ImportSelectedSectionImage(false, false);
+        }
+
+        private void previewSection2ImportWithSyncIdenticalColorsToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            ImportSelectedSectionImage(false, true);
         }
 
         private static string FindExistingSectionImagePath(string folderPath, string fileBase, string sectionSuffix)
@@ -3023,7 +3053,7 @@ namespace FFVI_tileTool
 
             if (!currentHasSection2Palette)
             {
-                dataGridViewSharedPaletteInfo.Rows.Add("n/a", "Section 2 palette is not available", string.Empty);
+                dataGridViewSharedPaletteInfo.Rows.Add(string.Empty, "n/a", "Section 2 palette is not available", string.Empty);
                 dataGridViewSharedPaletteInfo.ResumeLayout();
                 return;
             }
@@ -3038,13 +3068,22 @@ namespace FFVI_tileTool
                     continue;
 
                 List<int> section1Indexes = section1ByColor[color];
-                dataGridViewSharedPaletteInfo.Rows.Add(color, string.Join(",", section1Indexes), string.Join(",", section2Indexes));
+                int rowIndex = dataGridViewSharedPaletteInfo.Rows.Add(string.Empty, color, string.Join(",", section1Indexes), string.Join(",", section2Indexes));
+                if (TryParseRgbHexColor(color, out Color previewColor))
+                {
+                    DataGridViewCell previewCell = dataGridViewSharedPaletteInfo.Rows[rowIndex].Cells[0];
+                    previewCell.Style.BackColor = previewColor;
+                    previewCell.Style.ForeColor = previewColor;
+                    previewCell.Style.SelectionBackColor = previewColor;
+                    previewCell.Style.SelectionForeColor = previewColor;
+                    previewCell.Value = string.Empty;
+                }
                 sharedCount++;
             }
 
             if (sharedCount == 0)
             {
-                dataGridViewSharedPaletteInfo.Rows.Add("n/a", "No shared colors found", string.Empty);
+                dataGridViewSharedPaletteInfo.Rows.Add(string.Empty, "n/a", "No shared colors found", string.Empty);
                 dataGridViewSharedPaletteInfo.ResumeLayout();
                 return;
             }
@@ -3089,6 +3128,22 @@ namespace FFVI_tileTool
             }
 
             return byColor;
+        }
+
+        private static bool TryParseRgbHexColor(string rgbHex, out Color color)
+        {
+            color = Color.Empty;
+            if (string.IsNullOrWhiteSpace(rgbHex) || rgbHex.Length != 6)
+                return false;
+
+            if (!int.TryParse(rgbHex, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out int rgbValue))
+                return false;
+
+            int r = (rgbValue >> 16) & 0xFF;
+            int g = (rgbValue >> 8) & 0xFF;
+            int b = rgbValue & 0xFF;
+            color = Color.FromArgb(r, g, b);
+            return true;
         }
 
         private void ShowPaletteOffsets(string title, List<int> offsets, byte[] palette)
@@ -3626,6 +3681,15 @@ namespace FFVI_tileTool
             }
 
             e.DrawFocusRectangle();
+        }
+
+        private void comboBoxFileFilter_VisualRefresh(object sender, EventArgs e)
+        {
+            if (!(sender is ComboBox comboBox)) return;
+
+            // Fix stale arrow/button artifacts seen after resize in owner-draw mode.
+            comboBox.Invalidate();
+            comboBox.Update();
         }
 
         private void listBox1_DrawItem(object sender, DrawItemEventArgs e)

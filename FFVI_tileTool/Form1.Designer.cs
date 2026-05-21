@@ -61,6 +61,7 @@ namespace FFVI_tileTool
             this.previewSection2ContextMenuStrip = new System.Windows.Forms.ContextMenuStrip();
             this.previewSection2ExportImageToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.previewSection2ImportImageToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.previewSection2ImportWithSyncIdenticalColorsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.splitContainer2 = new System.Windows.Forms.SplitContainer();
             this.groupBox4 = new System.Windows.Forms.GroupBox();
             this.pictureBox2 = new System.Windows.Forms.PictureBox();
@@ -71,6 +72,7 @@ namespace FFVI_tileTool
             this.previewSection1ContextMenuStrip = new System.Windows.Forms.ContextMenuStrip();
             this.previewSection1ExportImageToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.previewSection1ImportImageToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.previewSection1ImportWithSyncIdenticalColorsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
             this.button2 = new System.Windows.Forms.Button();
             this.button1 = new System.Windows.Forms.Button();
@@ -81,6 +83,7 @@ namespace FFVI_tileTool
             this.buttonSection2PaletteInfo = new System.Windows.Forms.Button();
             this.groupBoxSharedPaletteInfo = new System.Windows.Forms.GroupBox();
             this.dataGridViewSharedPaletteInfo = new System.Windows.Forms.DataGridView();
+            this.dataGridViewTextBoxColumnColorPreview = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.dataGridViewTextBoxColumnSharedColor = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.dataGridViewTextBoxColumnSection1Index = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.dataGridViewTextBoxColumnSection2Index = new System.Windows.Forms.DataGridViewTextBoxColumn();
@@ -176,7 +179,6 @@ namespace FFVI_tileTool
             //
             this.settingsToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.previewTreat050505AsTransparentToolStripMenuItem,
-            this.parallelPalleteUpdateToolStripMenuItem,
             this.darkModeToolStripMenuItem});
             this.settingsToolStripMenuItem.Name = "settingsToolStripMenuItem";
             this.settingsToolStripMenuItem.Size = new System.Drawing.Size(61, 20);
@@ -357,9 +359,10 @@ namespace FFVI_tileTool
             // 
             this.previewSection2ContextMenuStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.previewSection2ExportImageToolStripMenuItem,
-            this.previewSection2ImportImageToolStripMenuItem});
+            this.previewSection2ImportImageToolStripMenuItem,
+            this.previewSection2ImportWithSyncIdenticalColorsToolStripMenuItem});
             this.previewSection2ContextMenuStrip.Name = "previewSection2ContextMenuStrip";
-            this.previewSection2ContextMenuStrip.Size = new System.Drawing.Size(139, 48);
+            this.previewSection2ContextMenuStrip.Size = new System.Drawing.Size(248, 70);
             // 
             // previewSection2ExportImageToolStripMenuItem
             // 
@@ -374,6 +377,13 @@ namespace FFVI_tileTool
             this.previewSection2ImportImageToolStripMenuItem.Size = new System.Drawing.Size(138, 22);
             this.previewSection2ImportImageToolStripMenuItem.Text = "Import image";
             this.previewSection2ImportImageToolStripMenuItem.Click += new System.EventHandler(this.previewSection2ImportImageToolStripMenuItem_Click);
+            // 
+            // previewSection2ImportWithSyncIdenticalColorsToolStripMenuItem
+            // 
+            this.previewSection2ImportWithSyncIdenticalColorsToolStripMenuItem.Name = "previewSection2ImportWithSyncIdenticalColorsToolStripMenuItem";
+            this.previewSection2ImportWithSyncIdenticalColorsToolStripMenuItem.Size = new System.Drawing.Size(247, 22);
+            this.previewSection2ImportWithSyncIdenticalColorsToolStripMenuItem.Text = "Import with Sync Identical Colors";
+            this.previewSection2ImportWithSyncIdenticalColorsToolStripMenuItem.Click += new System.EventHandler(this.previewSection2ImportWithSyncIdenticalColorsToolStripMenuItem_Click);
             // 
             // splitContainer2
             // 
@@ -461,9 +471,10 @@ namespace FFVI_tileTool
             // 
             this.previewSection1ContextMenuStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.previewSection1ExportImageToolStripMenuItem,
-            this.previewSection1ImportImageToolStripMenuItem});
+            this.previewSection1ImportImageToolStripMenuItem,
+            this.previewSection1ImportWithSyncIdenticalColorsToolStripMenuItem});
             this.previewSection1ContextMenuStrip.Name = "previewSection1ContextMenuStrip";
-            this.previewSection1ContextMenuStrip.Size = new System.Drawing.Size(139, 48);
+            this.previewSection1ContextMenuStrip.Size = new System.Drawing.Size(248, 70);
             // 
             // previewSection1ExportImageToolStripMenuItem
             // 
@@ -478,6 +489,13 @@ namespace FFVI_tileTool
             this.previewSection1ImportImageToolStripMenuItem.Size = new System.Drawing.Size(138, 22);
             this.previewSection1ImportImageToolStripMenuItem.Text = "Import image";
             this.previewSection1ImportImageToolStripMenuItem.Click += new System.EventHandler(this.previewSection1ImportImageToolStripMenuItem_Click);
+            // 
+            // previewSection1ImportWithSyncIdenticalColorsToolStripMenuItem
+            // 
+            this.previewSection1ImportWithSyncIdenticalColorsToolStripMenuItem.Name = "previewSection1ImportWithSyncIdenticalColorsToolStripMenuItem";
+            this.previewSection1ImportWithSyncIdenticalColorsToolStripMenuItem.Size = new System.Drawing.Size(247, 22);
+            this.previewSection1ImportWithSyncIdenticalColorsToolStripMenuItem.Text = "Import with Sync Identical Colors";
+            this.previewSection1ImportWithSyncIdenticalColorsToolStripMenuItem.Click += new System.EventHandler(this.previewSection1ImportWithSyncIdenticalColorsToolStripMenuItem_Click);
             //
             // groupBox1
             //
@@ -552,6 +570,7 @@ namespace FFVI_tileTool
             this.dataGridViewSharedPaletteInfo.AutoSizeColumnsMode = System.Windows.Forms.DataGridViewAutoSizeColumnsMode.Fill;
             this.dataGridViewSharedPaletteInfo.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             this.dataGridViewSharedPaletteInfo.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
+            this.dataGridViewTextBoxColumnColorPreview,
             this.dataGridViewTextBoxColumnSharedColor,
             this.dataGridViewTextBoxColumnSection1Index,
             this.dataGridViewTextBoxColumnSection2Index});
@@ -564,6 +583,15 @@ namespace FFVI_tileTool
             this.dataGridViewSharedPaletteInfo.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
             this.dataGridViewSharedPaletteInfo.Size = new System.Drawing.Size(541, 241);
             this.dataGridViewSharedPaletteInfo.TabIndex = 0;
+            // 
+            // dataGridViewTextBoxColumnColorPreview
+            // 
+            this.dataGridViewTextBoxColumnColorPreview.FillWeight = 20F;
+            this.dataGridViewTextBoxColumnColorPreview.HeaderText = "";
+            this.dataGridViewTextBoxColumnColorPreview.Name = "dataGridViewTextBoxColumnColorPreview";
+            this.dataGridViewTextBoxColumnColorPreview.ReadOnly = true;
+            this.dataGridViewTextBoxColumnColorPreview.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.NotSortable;
+            this.dataGridViewTextBoxColumnColorPreview.Width = 28;
             // 
             // dataGridViewTextBoxColumnSharedColor
             // 
@@ -705,6 +733,8 @@ namespace FFVI_tileTool
         private System.Windows.Forms.ContextMenuStrip previewSection2ContextMenuStrip;
         private System.Windows.Forms.ToolStripMenuItem previewSection2ExportImageToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem previewSection2ImportImageToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem previewSection2ImportWithSyncIdenticalColorsToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem previewSection1ImportWithSyncIdenticalColorsToolStripMenuItem;
         private System.Windows.Forms.SplitContainer splitContainer2;
         private System.Windows.Forms.Button button1;
         private System.Windows.Forms.Button button2;
@@ -728,6 +758,7 @@ namespace FFVI_tileTool
         private System.Windows.Forms.ToolStripMenuItem previewSection1ImportImageToolStripMenuItem;
         private System.Windows.Forms.GroupBox groupBoxSharedPaletteInfo;
         private System.Windows.Forms.DataGridView dataGridViewSharedPaletteInfo;
+        private System.Windows.Forms.DataGridViewTextBoxColumn dataGridViewTextBoxColumnColorPreview;
         private System.Windows.Forms.DataGridViewTextBoxColumn dataGridViewTextBoxColumnSharedColor;
         private System.Windows.Forms.DataGridViewTextBoxColumn dataGridViewTextBoxColumnSection1Index;
         private System.Windows.Forms.DataGridViewTextBoxColumn dataGridViewTextBoxColumnSection2Index;
