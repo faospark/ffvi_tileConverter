@@ -38,6 +38,7 @@ namespace FFVI_tileTool
         private const int WhCbt = 5;
         private const int HcbtActivate = 5;
         private const int WmSetIcon = 0x0080;
+        private const int WmThemeChanged = 0x031A;
         private static readonly IntPtr IconSmall = new IntPtr(0);
         private static readonly IntPtr IconBig = new IntPtr(1);
         private const string LastOpenedFileStateName = "last-opened-map.txt";
@@ -91,7 +92,50 @@ namespace FFVI_tileTool
         [DllImport("user32.dll")]
         private static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
 
+        [DllImport("uxtheme.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        private static extern int SetWindowTheme(IntPtr hWnd, string pszSubAppName, string pszSubIdList);
+
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        private static extern IntPtr LoadLibrary(string lpFileName);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern IntPtr GetProcAddress(IntPtr hModule, IntPtr lpProcName);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern bool FreeLibrary(IntPtr hModule);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool RedrawWindow(IntPtr hWnd, IntPtr lprcUpdate, IntPtr hrgnUpdate, uint flags);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool EnumChildWindows(IntPtr hWndParent, EnumChildProc lpEnumFunc, IntPtr lParam);
+
+        [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        private static extern int GetClassName(IntPtr hWnd, System.Text.StringBuilder lpClassName, int nMaxCount);
+
         private delegate IntPtr HookProc(int nCode, IntPtr wParam, IntPtr lParam);
+
+        private delegate bool EnumChildProc(IntPtr hWnd, IntPtr lParam);
+
+        [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+        private delegate bool AllowDarkModeForWindowDelegate(IntPtr hWnd, bool allow);
+
+        [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+        private delegate int SetPreferredAppModeDelegate(int appMode);
+
+        [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+        private delegate void FlushMenuThemesDelegate();
+
+        private const int PreferredAppModeAllowDark = 1;
+        private const uint RdwInvalidate = 0x0001;
+        private const uint RdwFrame = 0x0400;
+        private const uint RdwErase = 0x0004;
+        private const uint RdwAllChildren = 0x0080;
+        private static bool enhancedDarkModeInitialized;
+        private static bool attemptedEnhancedDarkModeInit;
+        private static AllowDarkModeForWindowDelegate allowDarkModeForWindow;
+        private static SetPreferredAppModeDelegate setPreferredAppMode;
+        private static FlushMenuThemesDelegate flushMenuThemes;
 
         string[] st;
         private string[] allMapFiles = new string[0];
@@ -120,6 +164,7 @@ namespace FFVI_tileTool
         public Form1()
         {
             InitializeComponent();
+            InitializeEnhancedDarkModeApis();
             Icon = GetApplicationIcon();
             Text = DefaultWindowTitle;
 
@@ -134,6 +179,8 @@ namespace FFVI_tileTool
             comboBoxFileFilter.DrawMode = DrawMode.OwnerDrawFixed;
             comboBoxFileFilter.DrawItem += comboBoxFileFilter_DrawItem;
             comboBoxFileFilter.SelectedIndex = 0;
+            listBox1.DrawMode = DrawMode.OwnerDrawFixed;
+            listBox1.DrawItem += listBox1_DrawItem;
 
             bool darkModeEnabled = LoadDarkModeState();
             darkModeToolStripMenuItem.Checked = darkModeEnabled;
@@ -159,6 +206,14 @@ namespace FFVI_tileTool
         {
             base.OnHandleCreated(e);
             ApplyTitleBarTheme(darkModeToolStripMenuItem.Checked);
+            ApplyScrollbarTheme(darkModeToolStripMenuItem.Checked);
+        }
+
+        protected override void OnShown(EventArgs e)
+        {
+            base.OnShown(e);
+            // Re-apply after first layout to ensure child control handles are themed.
+            ApplyScrollbarTheme(darkModeToolStripMenuItem.Checked);
         }
 
         private void browseToolStripMenuItem_Click(object sender, EventArgs e)
@@ -1284,12 +1339,175 @@ namespace FFVI_tileTool
             GetThemeColors(darkMode, out System.Drawing.Color background, out System.Drawing.Color surface, out System.Drawing.Color foreground);
 
             ApplyThemeToControlTree(this, background, surface, foreground, darkMode);
+            ApplySharedPaletteInfoTheme(darkMode, background, surface, foreground);
             ApplyThemeToMenu(menuStrip1, surface, foreground);
             ApplyThemeToStatusStrip(statusStrip1, surface, foreground);
+            ApplyScrollbarTheme(darkMode);
             ApplyTitleBarTheme(darkMode);
             UpdateAboutOverlayTheme(darkMode, surface, foreground);
             UpdatePreviewTransparencyBackground();
             Invalidate(true);
+        }
+
+        private void ApplyScrollbarTheme(bool darkMode)
+        {
+            string themeName = darkMode ? "DarkMode_Explorer" : "Explorer";
+            ApplyScrollbarThemeToControl(this, themeName);
+        }
+
+        private void ApplyScrollbarThemeToControl(Control control, string themeName)
+        {
+            if (control == null)
+                return;
+
+            if (control.IsHandleCreated && ShouldThemeScrollbars(control))
+            {
+                TryApplyEnhancedDarkModeForWindow(control.Handle, themeName == "DarkMode_Explorer");
+                SetWindowTheme(control.Handle, themeName, null);
+                SendMessage(control.Handle, WmThemeChanged, IntPtr.Zero, IntPtr.Zero);
+                RedrawWindow(control.Handle, IntPtr.Zero, IntPtr.Zero, RdwInvalidate | RdwErase | RdwFrame | RdwAllChildren);
+            }
+
+            foreach (Control child in control.Controls)
+                ApplyScrollbarThemeToControl(child, themeName);
+        }
+
+        private static bool ShouldThemeScrollbars(Control control)
+        {
+             return control is ListBox ||
+                 control is Panel ||
+                   control is TextBoxBase ||
+                   control is ComboBox ||
+                   control is DataGridView;
+        }
+
+        private void ApplySharedPaletteInfoTheme(bool darkMode, System.Drawing.Color background, System.Drawing.Color surface, System.Drawing.Color foreground)
+        {
+            string themeName = darkMode ? "DarkMode_Explorer" : "Explorer";
+
+            if (groupBoxSharedPaletteInfo != null)
+            {
+                groupBoxSharedPaletteInfo.BackColor = background;
+                groupBoxSharedPaletteInfo.ForeColor = foreground;
+            }
+
+            if (dataGridViewSharedPaletteInfo == null)
+                return;
+
+            DataGridView dataGridView = dataGridViewSharedPaletteInfo;
+            System.Drawing.Color headerColor = darkMode ? System.Drawing.Color.FromArgb(55, 55, 60) : SystemColors.Control;
+            System.Drawing.Color selectionColor = darkMode ? System.Drawing.Color.FromArgb(63, 63, 70) : SystemColors.Highlight;
+            System.Drawing.Color selectionText = darkMode ? foreground : SystemColors.HighlightText;
+
+            dataGridView.EnableHeadersVisualStyles = false;
+            dataGridView.BackgroundColor = surface;
+            dataGridView.GridColor = darkMode ? System.Drawing.Color.FromArgb(70, 70, 74) : System.Drawing.Color.FromArgb(210, 210, 210);
+            dataGridView.BorderStyle = darkMode ? BorderStyle.FixedSingle : BorderStyle.Fixed3D;
+
+            dataGridView.ColumnHeadersDefaultCellStyle.BackColor = headerColor;
+            dataGridView.ColumnHeadersDefaultCellStyle.ForeColor = foreground;
+            dataGridView.ColumnHeadersDefaultCellStyle.SelectionBackColor = headerColor;
+            dataGridView.ColumnHeadersDefaultCellStyle.SelectionForeColor = foreground;
+
+            dataGridView.DefaultCellStyle.BackColor = surface;
+            dataGridView.DefaultCellStyle.ForeColor = foreground;
+            dataGridView.DefaultCellStyle.SelectionBackColor = selectionColor;
+            dataGridView.DefaultCellStyle.SelectionForeColor = selectionText;
+
+            dataGridView.RowsDefaultCellStyle.BackColor = surface;
+            dataGridView.RowsDefaultCellStyle.ForeColor = foreground;
+            dataGridView.RowsDefaultCellStyle.SelectionBackColor = selectionColor;
+            dataGridView.RowsDefaultCellStyle.SelectionForeColor = selectionText;
+
+            dataGridView.AlternatingRowsDefaultCellStyle.BackColor = surface;
+            dataGridView.AlternatingRowsDefaultCellStyle.ForeColor = foreground;
+            dataGridView.AlternatingRowsDefaultCellStyle.SelectionBackColor = selectionColor;
+            dataGridView.AlternatingRowsDefaultCellStyle.SelectionForeColor = selectionText;
+
+            if (dataGridView.IsHandleCreated)
+            {
+                TryApplyEnhancedDarkModeForWindow(dataGridView.Handle, darkMode);
+                SetWindowTheme(dataGridView.Handle, themeName, null);
+                SendMessage(dataGridView.Handle, WmThemeChanged, IntPtr.Zero, IntPtr.Zero);
+                RedrawWindow(dataGridView.Handle, IntPtr.Zero, IntPtr.Zero, RdwInvalidate | RdwErase | RdwFrame | RdwAllChildren);
+                ApplyScrollbarThemeToChildWindows(dataGridView.Handle, themeName, darkMode);
+            }
+
+            dataGridView.Invalidate();
+        }
+
+        private void ApplyScrollbarThemeToChildWindows(IntPtr parentHandle, string themeName, bool darkMode)
+        {
+            if (parentHandle == IntPtr.Zero)
+                return;
+
+            EnumChildWindows(parentHandle, (childHandle, lParam) =>
+            {
+                System.Text.StringBuilder className = new System.Text.StringBuilder(256);
+                if (GetClassName(childHandle, className, className.Capacity) > 0)
+                {
+                    string childClass = className.ToString();
+                    if (childClass.IndexOf("scroll", StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        TryApplyEnhancedDarkModeForWindow(childHandle, darkMode);
+                        SetWindowTheme(childHandle, themeName, null);
+                        SendMessage(childHandle, WmThemeChanged, IntPtr.Zero, IntPtr.Zero);
+                        RedrawWindow(childHandle, IntPtr.Zero, IntPtr.Zero, RdwInvalidate | RdwErase | RdwFrame);
+                    }
+                }
+
+                return true;
+            }, IntPtr.Zero);
+        }
+
+        private static void InitializeEnhancedDarkModeApis()
+        {
+            if (attemptedEnhancedDarkModeInit)
+                return;
+
+            attemptedEnhancedDarkModeInit = true;
+
+            IntPtr moduleHandle = LoadLibrary("uxtheme.dll");
+            if (moduleHandle == IntPtr.Zero)
+                return;
+
+            try
+            {
+                IntPtr allowProc = GetProcAddress(moduleHandle, (IntPtr)133);
+                IntPtr preferredModeProc = GetProcAddress(moduleHandle, (IntPtr)135);
+                IntPtr flushMenuProc = GetProcAddress(moduleHandle, (IntPtr)136);
+
+                if (allowProc == IntPtr.Zero || preferredModeProc == IntPtr.Zero)
+                    return;
+
+                allowDarkModeForWindow = Marshal.GetDelegateForFunctionPointer<AllowDarkModeForWindowDelegate>(allowProc);
+                setPreferredAppMode = Marshal.GetDelegateForFunctionPointer<SetPreferredAppModeDelegate>(preferredModeProc);
+                if (flushMenuProc != IntPtr.Zero)
+                    flushMenuThemes = Marshal.GetDelegateForFunctionPointer<FlushMenuThemesDelegate>(flushMenuProc);
+
+                setPreferredAppMode(PreferredAppModeAllowDark);
+                flushMenuThemes?.Invoke();
+                enhancedDarkModeInitialized = true;
+            }
+            catch
+            {
+                enhancedDarkModeInitialized = false;
+            }
+        }
+
+        private static void TryApplyEnhancedDarkModeForWindow(IntPtr windowHandle, bool darkMode)
+        {
+            if (!enhancedDarkModeInitialized || allowDarkModeForWindow == null || windowHandle == IntPtr.Zero)
+                return;
+
+            try
+            {
+                allowDarkModeForWindow(windowHandle, darkMode);
+            }
+            catch
+            {
+                // Non-fatal on unsupported Windows versions.
+            }
         }
 
         private void EnsureAboutOverlayCreated()
@@ -2695,6 +2913,10 @@ namespace FFVI_tileTool
             if (dataGridViewSharedPaletteInfo == null)
                 return;
 
+            bool darkMode = darkModeToolStripMenuItem != null && darkModeToolStripMenuItem.Checked;
+            GetThemeColors(darkMode, out System.Drawing.Color background, out System.Drawing.Color surface, out System.Drawing.Color foreground);
+            ApplySharedPaletteInfoTheme(darkMode, background, surface, foreground);
+
             dataGridViewSharedPaletteInfo.SuspendLayout();
             dataGridViewSharedPaletteInfo.Rows.Clear();
 
@@ -2727,6 +2949,19 @@ namespace FFVI_tileTool
             }
 
             dataGridViewSharedPaletteInfo.ResumeLayout();
+
+            if (dataGridViewSharedPaletteInfo.IsHandleCreated)
+            {
+                bool gridDarkMode = darkModeToolStripMenuItem != null && darkModeToolStripMenuItem.Checked;
+                ApplyScrollbarThemeToChildWindows(dataGridViewSharedPaletteInfo.Handle, gridDarkMode ? "DarkMode_Explorer" : "Explorer", gridDarkMode);
+                dataGridViewSharedPaletteInfo.BeginInvoke(new Action(() =>
+                {
+                    if (!dataGridViewSharedPaletteInfo.IsHandleCreated)
+                        return;
+
+                    ApplyScrollbarThemeToChildWindows(dataGridViewSharedPaletteInfo.Handle, gridDarkMode ? "DarkMode_Explorer" : "Explorer", gridDarkMode);
+                }));
+            }
         }
 
         private static Dictionary<string, List<int>> BuildPaletteIndexMapByRgb(byte[] palette)
@@ -3287,6 +3522,30 @@ namespace FFVI_tileTool
                     Rectangle textBounds = new Rectangle(e.Bounds.X + 2, e.Bounds.Y + 2, e.Bounds.Width - 4, e.Bounds.Height - 4);
                     e.Graphics.DrawString(comboBox.Text, e.Font, textBrush, textBounds);
                 }
+            }
+
+            e.DrawFocusRectangle();
+        }
+
+        private void listBox1_DrawItem(object sender, DrawItemEventArgs e)
+        {
+            if (!(sender is ListBox listBox)) return;
+            if (e.Index < 0 || e.Index >= listBox.Items.Count) return;
+
+            bool darkMode = darkModeToolStripMenuItem != null && darkModeToolStripMenuItem.Checked;
+            GetThemeColors(darkMode, out System.Drawing.Color background, out System.Drawing.Color surface, out System.Drawing.Color foreground);
+
+            bool isSelected = (e.State & DrawItemState.Selected) == DrawItemState.Selected;
+            System.Drawing.Color itemBackColor = isSelected ? SystemColors.Highlight : surface;
+            System.Drawing.Color itemForeColor = isSelected ? SystemColors.HighlightText : foreground;
+
+            using (SolidBrush backBrush = new SolidBrush(itemBackColor))
+            using (SolidBrush textBrush = new SolidBrush(itemForeColor))
+            {
+                e.Graphics.FillRectangle(backBrush, e.Bounds);
+                string itemText = listBox.GetItemText(listBox.Items[e.Index]);
+                Rectangle textBounds = new Rectangle(e.Bounds.X + 2, e.Bounds.Y + 1, e.Bounds.Width - 4, e.Bounds.Height - 2);
+                e.Graphics.DrawString(itemText, e.Font, textBrush, textBounds);
             }
 
             e.DrawFocusRectangle();
