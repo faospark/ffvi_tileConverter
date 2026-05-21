@@ -1381,14 +1381,53 @@ namespace FFVI_tileTool
                    control is DataGridView;
         }
 
+        private static void DataGridViewSharedPalette_Resize(object sender, EventArgs e)
+        {
+            if (!(sender is DataGridView dgv) || dgv.Columns.Count < 3)
+                return;
+
+            // Proportional widths matching designer FillWeights: 70, 115, 115 (total 300).
+            // Always subtract the vertical scrollbar width to keep columns stable.
+            int scrollBarWidth = SystemInformation.VerticalScrollBarWidth;
+            int available = Math.Max(0, dgv.ClientSize.Width - scrollBarWidth);
+            dgv.Columns[0].Width = (int)(available * 70f / 300f);
+            dgv.Columns[1].Width = (int)(available * 115f / 300f);
+            dgv.Columns[2].Width = available - dgv.Columns[0].Width - dgv.Columns[1].Width;
+        }
+
+        private static void GroupBox_PaintDarkMode(object sender, PaintEventArgs e)
+        {
+            if (!(sender is GroupBox gb))
+                return;
+
+            // Use the parent's background so transparent group boxes show through.
+            Color fillColor = (gb.BackColor == Color.Transparent && gb.Parent != null)
+                ? gb.Parent.BackColor
+                : gb.BackColor;
+
+            // Fill background (suppresses the default border drawn by WinForms).
+            using (SolidBrush backBrush = new SolidBrush(fillColor))
+                e.Graphics.FillRectangle(backBrush, gb.ClientRectangle);
+
+            // Redraw the title text without any border box.
+            if (!string.IsNullOrEmpty(gb.Text))
+            {
+                using (SolidBrush textBrush = new SolidBrush(gb.ForeColor))
+                    e.Graphics.DrawString(gb.Text, gb.Font, textBrush, 8, 0);
+            }
+        }
+
         private void ApplySharedPaletteInfoTheme(bool darkMode, System.Drawing.Color background, System.Drawing.Color surface, System.Drawing.Color foreground)
         {
             string themeName = darkMode ? "DarkMode_Explorer" : "Explorer";
 
             if (groupBoxSharedPaletteInfo != null)
             {
-                groupBoxSharedPaletteInfo.BackColor = background;
+                groupBoxSharedPaletteInfo.BackColor = darkMode ? Color.Transparent : background;
                 groupBoxSharedPaletteInfo.ForeColor = foreground;
+                groupBoxSharedPaletteInfo.Paint -= GroupBox_PaintDarkMode;
+                if (darkMode)
+                    groupBoxSharedPaletteInfo.Paint += GroupBox_PaintDarkMode;
             }
 
             if (dataGridViewSharedPaletteInfo == null)
@@ -1399,27 +1438,38 @@ namespace FFVI_tileTool
             System.Drawing.Color selectionColor = darkMode ? System.Drawing.Color.FromArgb(63, 63, 70) : SystemColors.Highlight;
             System.Drawing.Color selectionText = darkMode ? foreground : SystemColors.HighlightText;
 
-            dataGridView.EnableHeadersVisualStyles = false;
-            dataGridView.BackgroundColor = surface;
-            dataGridView.GridColor = darkMode ? System.Drawing.Color.FromArgb(70, 70, 74) : System.Drawing.Color.FromArgb(210, 210, 210);
-            dataGridView.BorderStyle = darkMode ? BorderStyle.FixedSingle : BorderStyle.Fixed3D;
+            System.Drawing.Color cellBg = darkMode ? background : surface;
 
-            dataGridView.ColumnHeadersDefaultCellStyle.BackColor = headerColor;
+            dataGridView.EnableHeadersVisualStyles = false;
+            dataGridView.BackgroundColor = cellBg;
+            dataGridView.ScrollBars = ScrollBars.Vertical;
+            dataGridView.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None;
+            dataGridView.ColumnHeadersBorderStyle = darkMode ? DataGridViewHeaderBorderStyle.None : DataGridViewHeaderBorderStyle.Single;
+            dataGridView.GridColor = darkMode ? System.Drawing.Color.FromArgb(70, 70, 74) : System.Drawing.Color.FromArgb(210, 210, 210);
+            dataGridView.BorderStyle = darkMode ? BorderStyle.None : BorderStyle.Fixed3D;
+
+            // Fix column widths proportionally (based on designer FillWeights: 70, 115, 115)
+            // Always subtract scrollbar width so columns never reflow when scrollbar appears.
+            dataGridView.Resize -= DataGridViewSharedPalette_Resize;
+            dataGridView.Resize += DataGridViewSharedPalette_Resize;
+            DataGridViewSharedPalette_Resize(dataGridView, EventArgs.Empty);
+
+            dataGridView.ColumnHeadersDefaultCellStyle.BackColor = darkMode ? background : headerColor;
             dataGridView.ColumnHeadersDefaultCellStyle.ForeColor = foreground;
-            dataGridView.ColumnHeadersDefaultCellStyle.SelectionBackColor = headerColor;
+            dataGridView.ColumnHeadersDefaultCellStyle.SelectionBackColor = darkMode ? background : headerColor;
             dataGridView.ColumnHeadersDefaultCellStyle.SelectionForeColor = foreground;
 
-            dataGridView.DefaultCellStyle.BackColor = surface;
+            dataGridView.DefaultCellStyle.BackColor = cellBg;
             dataGridView.DefaultCellStyle.ForeColor = foreground;
             dataGridView.DefaultCellStyle.SelectionBackColor = selectionColor;
             dataGridView.DefaultCellStyle.SelectionForeColor = selectionText;
 
-            dataGridView.RowsDefaultCellStyle.BackColor = surface;
+            dataGridView.RowsDefaultCellStyle.BackColor = cellBg;
             dataGridView.RowsDefaultCellStyle.ForeColor = foreground;
             dataGridView.RowsDefaultCellStyle.SelectionBackColor = selectionColor;
             dataGridView.RowsDefaultCellStyle.SelectionForeColor = selectionText;
 
-            dataGridView.AlternatingRowsDefaultCellStyle.BackColor = surface;
+            dataGridView.AlternatingRowsDefaultCellStyle.BackColor = cellBg;
             dataGridView.AlternatingRowsDefaultCellStyle.ForeColor = foreground;
             dataGridView.AlternatingRowsDefaultCellStyle.SelectionBackColor = selectionColor;
             dataGridView.AlternatingRowsDefaultCellStyle.SelectionForeColor = selectionText;
@@ -2071,6 +2121,9 @@ namespace FFVI_tileTool
             {
                 groupBox.BackColor = background;
                 groupBox.ForeColor = foreground;
+                groupBox.Paint -= GroupBox_PaintDarkMode;
+                if (darkMode)
+                    groupBox.Paint += GroupBox_PaintDarkMode;
             }
             else if (control is Panel panel)
             {
