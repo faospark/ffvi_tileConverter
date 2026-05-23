@@ -50,6 +50,10 @@ namespace FFVI_tileTool
         private const string ParallelPaletteUpdateSettingName = "parallel-palette-update.txt";
         private const string DefaultWindowTitle = "FFVI Old Tile Tool";
         private const int MaxRecentDirectories = 8;
+        private const string PrimaryMapBinPattern = "map*.bin";
+        private const string GenericBinPattern = "*.bin";
+        private const string PrimaryMapBinGzipPattern = "map*.bin.gz";
+        private const string GenericBinGzipPattern = "*.bin.gz";
         private static readonly Font DefaultAppUiFont = new Font("Segoe UI", 9F, FontStyle.Regular, GraphicsUnit.Point);
 
         private static readonly HashSet<string> SnowTileMaps = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
@@ -250,11 +254,11 @@ namespace FFVI_tileTool
 
                 if (!EnsureMapBinFilesOrOfferDecompression(selectedFolder))
                 {
-                    ShowAppMessage("No map*.bin files found in the selected folder.", "Browse", MessageBoxIcon.Warning);
+                        ShowAppMessage("No compatible .bin files found in the selected folder.", "Browse", MessageBoxIcon.Warning);
                     return;
                 }
 
-                string firstMapFile = Directory.EnumerateFiles(selectedFolder, "map*.bin").FirstOrDefault();
+                    string firstMapFile = GetSupportedBinFiles(selectedFolder).FirstOrDefault();
                 if (!string.IsNullOrWhiteSpace(firstMapFile))
                     SaveLastOpenedFile(firstMapFile);
                 AddRecentDirectory(selectedFolder);
@@ -357,7 +361,7 @@ namespace FFVI_tileTool
 
             if (!EnsureMapBinFilesOrOfferDecompression(folderPath))
             {
-                ShowAppMessage("No map*.bin files found in the selected folder.", "Recent directories", MessageBoxIcon.Warning);
+                ShowAppMessage("No compatible .bin files found in the selected folder.", "Recent directories", MessageBoxIcon.Warning);
                 return;
             }
 
@@ -739,7 +743,7 @@ namespace FFVI_tileTool
                 return;
             }
 
-            allMapFiles = Directory.GetFiles(folderPath, "map*.bin", SearchOption.TopDirectoryOnly);
+            allMapFiles = GetSupportedBinFiles(folderPath);
             if (allMapFiles.Length == 0)
             {
                 st = new string[0];
@@ -827,13 +831,49 @@ namespace FFVI_tileTool
             return "AllMaps";
         }
 
-        private static string[] GetMapGzipFiles(string folderPath)
+        private static string[] GetSupportedBinGzipFiles(string folderPath)
         {
             if (string.IsNullOrWhiteSpace(folderPath) || !Directory.Exists(folderPath))
                 return new string[0];
 
-            return Directory.GetFiles(folderPath, "map*.bin.gz", SearchOption.TopDirectoryOnly)
+            string[] mapNamedGzipFiles = Directory.GetFiles(folderPath, PrimaryMapBinGzipPattern, SearchOption.TopDirectoryOnly);
+            string[] allGzipFiles = Directory.GetFiles(folderPath, GenericBinGzipPattern, SearchOption.TopDirectoryOnly);
+
+            string[] orderedMapNamed = mapNamedGzipFiles
                 .OrderBy(Path.GetFileName)
+                .ToArray();
+
+            HashSet<string> mapNamedSet = new HashSet<string>(orderedMapNamed, StringComparer.OrdinalIgnoreCase);
+            string[] orderedNonMapNamed = allGzipFiles
+                .Where(x => !mapNamedSet.Contains(x))
+                .OrderBy(Path.GetFileName)
+                .ToArray();
+
+            return orderedMapNamed
+                .Concat(orderedNonMapNamed)
+                .ToArray();
+        }
+
+        private static string[] GetSupportedBinFiles(string folderPath)
+        {
+            if (string.IsNullOrWhiteSpace(folderPath) || !Directory.Exists(folderPath))
+                return new string[0];
+
+            string[] mapNamedBins = Directory.GetFiles(folderPath, PrimaryMapBinPattern, SearchOption.TopDirectoryOnly);
+            string[] allBins = Directory.GetFiles(folderPath, GenericBinPattern, SearchOption.TopDirectoryOnly);
+
+            string[] orderedMapNamed = mapNamedBins
+                .OrderBy(Path.GetFileName)
+                .ToArray();
+
+            HashSet<string> mapNamedSet = new HashSet<string>(orderedMapNamed, StringComparer.OrdinalIgnoreCase);
+            string[] orderedNonMapNamed = allBins
+                .Where(x => !mapNamedSet.Contains(x))
+                .OrderBy(Path.GetFileName)
+                .ToArray();
+
+            return orderedMapNamed
+                .Concat(orderedNonMapNamed)
                 .ToArray();
         }
 
@@ -841,12 +881,12 @@ namespace FFVI_tileTool
         {
             if (st != null && st.Length > 0) return true;
 
-            string[] gzipFiles = GetMapGzipFiles(folderPath);
+            string[] gzipFiles = GetSupportedBinGzipFiles(folderPath);
             if (gzipFiles.Length == 0) return false;
 
             DialogResult decision = ShowAppMessageWithActions(
-                "No map*.bin files were found, but map*.bin.gz files were detected.\n\nDo you want to decompress them now?",
-                "Compressed map files detected",
+                "No compatible .bin files were found, but compressed *.bin.gz files were detected.\n\nDo you want to decompress them now?",
+                "Compressed .bin files detected",
                 "Decompress",
                 "Cancel",
                 MessageBoxIcon.Warning);
@@ -1136,8 +1176,8 @@ namespace FFVI_tileTool
                 return;
             }
 
-            string[] mapFiles = Directory.GetFiles(folderPath, "map*.bin", SearchOption.TopDirectoryOnly);
-            if (mapFiles.Length == 0) return;
+            string[] binFiles = GetSupportedBinFiles(folderPath);
+            if (binFiles.Length == 0) return;
 
             backupReminderHandledSession = true;
 
@@ -1169,7 +1209,7 @@ namespace FFVI_tileTool
             if (!Directory.Exists(backupRoot))
                 return false;
 
-            return Directory.EnumerateFiles(backupRoot, "map*.bin", SearchOption.AllDirectories).Any();
+            return Directory.EnumerateFiles(backupRoot, "*.bin", SearchOption.AllDirectories).Any();
         }
 
         private static bool TryCreateMapBackup(string folderPath, out int backedUpCount, out int skippedCount, out int failedCount, out string outputFolder)
@@ -1181,7 +1221,7 @@ namespace FFVI_tileTool
             outputFolder = string.Empty;
             if (string.IsNullOrWhiteSpace(folderPath) || !Directory.Exists(folderPath)) return false;
 
-            string[] mapFiles = Directory.GetFiles(folderPath, "map*.bin", SearchOption.TopDirectoryOnly);
+            string[] mapFiles = GetSupportedBinFiles(folderPath);
             if (mapFiles.Length == 0) return false;
 
             string backupRoot = Path.Combine(folderPath, "map_backup");
@@ -3193,22 +3233,20 @@ namespace FFVI_tileTool
                 string sourceFolder = Path.GetDirectoryName(dialog.FileName);
                 if (string.IsNullOrWhiteSpace(sourceFolder) || !Directory.Exists(sourceFolder)) return;
 
-                string[] mapFiles = Directory.GetFiles(sourceFolder, "map*.bin", SearchOption.TopDirectoryOnly)
-                    .OrderBy(Path.GetFileName)
-                    .ToArray();
+                string[] mapFiles = GetSupportedBinFiles(sourceFolder);
 
                 if (mapFiles.Length == 0)
                 {
-                    string[] gzipFiles = GetMapGzipFiles(sourceFolder);
+                    string[] gzipFiles = GetSupportedBinGzipFiles(sourceFolder);
                     if (gzipFiles.Length == 0)
                     {
-                        ShowAppMessage("No map*.bin files found in the selected folder.", "Mass export", MessageBoxIcon.Warning);
+                        ShowAppMessage("No compatible .bin files found in the selected folder.", "Mass export", MessageBoxIcon.Warning);
                         return;
                     }
 
                 DialogResult decision = ShowAppMessageWithActions(
-                    "No map*.bin files were found, but map*.bin.gz files were detected.\n\nDo you want to decompress them now and continue mass export?",
-                    "Compressed map files detected",
+                    "No compatible .bin files were found, but compressed *.bin.gz files were detected.\n\nDo you want to decompress them now and continue mass export?",
+                    "Compressed .bin files detected",
                     "Decompress",
                     "Cancel",
                     MessageBoxIcon.Warning);
@@ -3222,13 +3260,11 @@ namespace FFVI_tileTool
                     "Decompression result",
                     failedCount == 0 ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
 
-                mapFiles = Directory.GetFiles(sourceFolder, "map*.bin", SearchOption.TopDirectoryOnly)
-                    .OrderBy(Path.GetFileName)
-                    .ToArray();
+                mapFiles = GetSupportedBinFiles(sourceFolder);
 
                 if (mapFiles.Length == 0)
                 {
-                    ShowAppMessage("No map*.bin files are available after decompression.", "Mass export", MessageBoxIcon.Warning);
+                    ShowAppMessage("No compatible .bin files are available after decompression.", "Mass export", MessageBoxIcon.Warning);
                     return;
                 }
             }
@@ -3361,13 +3397,11 @@ namespace FFVI_tileTool
                 return;
             }
 
-            string[] mapFiles = Directory.GetFiles(targetFolder, "map*.bin", SearchOption.TopDirectoryOnly)
-                .OrderBy(Path.GetFileName)
-                .ToArray();
+            string[] mapFiles = GetSupportedBinFiles(targetFolder);
 
             if (mapFiles.Length == 0)
             {
-                ShowAppMessage("No map*.bin files found in the selected folder.", "Mass import", MessageBoxIcon.Warning);
+                ShowAppMessage("No compatible .bin files found in the selected folder.", "Mass import", MessageBoxIcon.Warning);
                 return;
             }
 
@@ -3592,7 +3626,7 @@ namespace FFVI_tileTool
 
             if (!TryCreateMapBackup(folderPath, out int backedUpCount, out int skippedCount, out int failedCount, out string outputFolder))
             {
-                ShowAppMessage("No map*.bin files found in the current folder.", "Map backup", MessageBoxIcon.Warning);
+                ShowAppMessage("No compatible .bin files found in the current folder.", "Map backup", MessageBoxIcon.Warning);
                 return;
             }
 
