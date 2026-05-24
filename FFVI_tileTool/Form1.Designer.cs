@@ -30,6 +30,7 @@ namespace FFVI_tileTool
         {
             this.menuStrip1 = new System.Windows.Forms.MenuStrip();
             this.statusStrip1 = new System.Windows.Forms.StatusStrip();
+            this.footerBuildPaletteCodexStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
             this.versionLabel = new System.Windows.Forms.ToolStripStatusLabel();
             this.browseToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.browseOpenToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -40,7 +41,9 @@ namespace FFVI_tileTool
             this.massImportToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.settingsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.previewTreat050505AsTransparentToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.parallelPalleteUpdateToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.showSharedPaletteInfoToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.debugModeToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.rebuildPaletteMetadataCacheToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.filtersToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.filterOffToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.filterSnowTilesToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -178,8 +181,10 @@ namespace FFVI_tileTool
             // settingsToolStripMenuItem
             //
             this.settingsToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.darkModeToolStripMenuItem,
             this.previewTreat050505AsTransparentToolStripMenuItem,
-            this.darkModeToolStripMenuItem});
+            this.showSharedPaletteInfoToolStripMenuItem,
+            this.debugModeToolStripMenuItem});
             this.settingsToolStripMenuItem.Name = "settingsToolStripMenuItem";
             this.settingsToolStripMenuItem.Size = new System.Drawing.Size(61, 20);
             this.settingsToolStripMenuItem.Text = "Settings";
@@ -189,16 +194,31 @@ namespace FFVI_tileTool
             this.previewTreat050505AsTransparentToolStripMenuItem.CheckOnClick = true;
             this.previewTreat050505AsTransparentToolStripMenuItem.Name = "previewTreat050505AsTransparentToolStripMenuItem";
             this.previewTreat050505AsTransparentToolStripMenuItem.Size = new System.Drawing.Size(299, 22);
-            this.previewTreat050505AsTransparentToolStripMenuItem.Text = "Preview 05/05/05 As Transparent";
+            this.previewTreat050505AsTransparentToolStripMenuItem.Text = "Enable Transparency View";
             this.previewTreat050505AsTransparentToolStripMenuItem.CheckedChanged += new System.EventHandler(this.previewTreat050505AsTransparentToolStripMenuItem_CheckedChanged);
             //
-            // parallelPalleteUpdateToolStripMenuItem
+            // showSharedPaletteInfoToolStripMenuItem
             //
-            this.parallelPalleteUpdateToolStripMenuItem.CheckOnClick = true;
-            this.parallelPalleteUpdateToolStripMenuItem.Name = "parallelPalleteUpdateToolStripMenuItem";
-            this.parallelPalleteUpdateToolStripMenuItem.Size = new System.Drawing.Size(299, 22);
-            this.parallelPalleteUpdateToolStripMenuItem.Text = "Experimental Parallel Pallete Update";
-            this.parallelPalleteUpdateToolStripMenuItem.CheckedChanged += new System.EventHandler(this.parallelPalleteUpdateToolStripMenuItem_CheckedChanged);
+            this.showSharedPaletteInfoToolStripMenuItem.CheckOnClick = true;
+            this.showSharedPaletteInfoToolStripMenuItem.Name = "showSharedPaletteInfoToolStripMenuItem";
+            this.showSharedPaletteInfoToolStripMenuItem.Size = new System.Drawing.Size(299, 22);
+            this.showSharedPaletteInfoToolStripMenuItem.Text = "Show Shared Palette Information";
+            this.showSharedPaletteInfoToolStripMenuItem.CheckedChanged += new System.EventHandler(this.showSharedPaletteInfoToolStripMenuItem_CheckedChanged);
+            //
+            // debugModeToolStripMenuItem
+            //
+            this.debugModeToolStripMenuItem.CheckOnClick = true;
+            this.debugModeToolStripMenuItem.Name = "debugModeToolStripMenuItem";
+            this.debugModeToolStripMenuItem.Size = new System.Drawing.Size(299, 22);
+            this.debugModeToolStripMenuItem.Text = "Debug Mode";
+            this.debugModeToolStripMenuItem.CheckedChanged += new System.EventHandler(this.debugModeToolStripMenuItem_CheckedChanged);
+            //
+            // rebuildPaletteMetadataCacheToolStripMenuItem
+            //
+            this.rebuildPaletteMetadataCacheToolStripMenuItem.Name = "rebuildPaletteMetadataCacheToolStripMenuItem";
+            this.rebuildPaletteMetadataCacheToolStripMenuItem.Size = new System.Drawing.Size(299, 22);
+            this.rebuildPaletteMetadataCacheToolStripMenuItem.Text = "Build/Refresh Palette Codex";
+            this.rebuildPaletteMetadataCacheToolStripMenuItem.Click += new System.EventHandler(this.rebuildPaletteMetadataCacheToolStripMenuItem_Click);
             //
             // filtersToolStripMenuItem
             //
@@ -560,7 +580,7 @@ namespace FFVI_tileTool
             this.groupBoxSharedPaletteInfo.Size = new System.Drawing.Size(547, 747);
             this.groupBoxSharedPaletteInfo.TabIndex = 4;
             this.groupBoxSharedPaletteInfo.TabStop = false;
-            this.groupBoxSharedPaletteInfo.Text = "Shared Pallete Information";
+            this.groupBoxSharedPaletteInfo.Text = "Shared Palette Information";
             // 
             // dataGridViewSharedPaletteInfo
             // 
@@ -647,6 +667,7 @@ namespace FFVI_tileTool
             // statusStrip1
             //
             this.statusStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.footerBuildPaletteCodexStatusLabel,
             this.versionLabel});
             this.statusStrip1.Location = new System.Drawing.Point(0, 648);
             this.statusStrip1.Name = "statusStrip1";
@@ -655,12 +676,21 @@ namespace FFVI_tileTool
             this.statusStrip1.BackColor = System.Drawing.Color.FromArgb(45, 45, 48);
             this.statusStrip1.ForeColor = System.Drawing.Color.Gainsboro;
             //
+            // footerBuildPaletteCodexStatusLabel
+            //
+            this.footerBuildPaletteCodexStatusLabel.IsLink = true;
+            this.footerBuildPaletteCodexStatusLabel.Name = "footerBuildPaletteCodexStatusLabel";
+            this.footerBuildPaletteCodexStatusLabel.Size = new System.Drawing.Size(84, 17);
+            this.footerBuildPaletteCodexStatusLabel.Text = "Refresh Codex";
+            this.footerBuildPaletteCodexStatusLabel.Visible = false;
+            this.footerBuildPaletteCodexStatusLabel.Click += new System.EventHandler(this.footerBuildPaletteCodexStatusLabel_Click);
+            //
             // versionLabel
             //
             this.versionLabel.Name = "versionLabel";
-            this.versionLabel.Size = new System.Drawing.Size(1245, 17);
+            this.versionLabel.Size = new System.Drawing.Size(1084, 17);
             this.versionLabel.Spring = true;
-            this.versionLabel.Text = "Version 2026.5";
+            this.versionLabel.Text = "Version 2026.5.2";
             this.versionLabel.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
             //
             // Form1
@@ -707,6 +737,7 @@ namespace FFVI_tileTool
 
         private System.Windows.Forms.MenuStrip menuStrip1;
         private System.Windows.Forms.StatusStrip statusStrip1;
+        private System.Windows.Forms.ToolStripStatusLabel footerBuildPaletteCodexStatusLabel;
         private System.Windows.Forms.ToolStripStatusLabel versionLabel;
         private System.Windows.Forms.ToolStripMenuItem browseToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem browseOpenToolStripMenuItem;
@@ -741,6 +772,9 @@ namespace FFVI_tileTool
         private System.Windows.Forms.ToolStripMenuItem browseAndMassExportToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem massImportToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem settingsToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem showSharedPaletteInfoToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem debugModeToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem rebuildPaletteMetadataCacheToolStripMenuItem;
         private System.Windows.Forms.GroupBox groupBox1;
         private System.Windows.Forms.GroupBox groupBox2;
         private System.Windows.Forms.Button button3;

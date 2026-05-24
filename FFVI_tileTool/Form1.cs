@@ -13,6 +13,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Xml.Serialization;
 
 namespace FFVI_tileTool
 {
@@ -47,7 +48,10 @@ namespace FFVI_tileTool
         private const string DarkModeStateName = "dark-mode.txt";
         private const string BackupReminderStateName = "backup-reminder-shown.txt";
         private const string Preview050505SettingName = "preview-050505.txt";
-        private const string ParallelPaletteUpdateSettingName = "parallel-palette-update.txt";
+        private const string SharedPaletteInfoVisibilitySettingName = "show-shared-palette-info.txt";
+        private const string DebugModeSettingName = "debug-mode.txt";
+        private const string PaletteMetadataCacheFileName = "palette-metadata-cache.xml";
+        private const string PaletteMetadataSchemaVersion = "1";
         private const string DefaultWindowTitle = "FFVI Old Tile Tool";
         private const int MaxRecentDirectories = 8;
         private const string PrimaryMapBinPattern = "map*.bin";
@@ -154,11 +158,16 @@ namespace FFVI_tileTool
         private MapCategoryFilter activeMapFilter = MapCategoryFilter.Off;
         private bool backupReminderHandledSession;
         private ToolStripMenuItem previewTreat050505AsTransparentToolStripMenuItem;
-        private ToolStripMenuItem parallelPalleteUpdateToolStripMenuItem;
         private bool previewTreat050505AsTransparent;
         private Bitmap currentSection1SourceBitmap;
         private Bitmap currentSection2SourceBitmap;
         private Bitmap previewCheckerBackgroundBitmap;
+        private List<SharedPaletteColorEntry> currentSharedPaletteColorEntries = new List<SharedPaletteColorEntry>();
+        private PaletteMetadataCache paletteMetadataCache = new PaletteMetadataCache();
+        private Dictionary<string, PaletteMetadataEntry> paletteMetadataByFileName = new Dictionary<string, PaletteMetadataEntry>(StringComparer.OrdinalIgnoreCase);
+        private string loadedPaletteMetadataFolder;
+        private string loadedPaletteMetadataPath;
+        private bool paletteMetadataDirty;
         private bool isSyncingFilterDropdown;
         private static Icon cachedApplicationIcon;
         private Panel aboutOverlayBackdrop;
@@ -166,6 +175,34 @@ namespace FFVI_tileTool
         private Panel aboutOverlayContentHost;
         private Button aboutOverlayCloseButton;
         private AboutForm aboutOverlayContent;
+
+        [Serializable]
+        public sealed class PaletteMetadataCache
+        {
+            public string SchemaVersion { get; set; } = PaletteMetadataSchemaVersion;
+            public DateTime GeneratedUtc { get; set; } = DateTime.UtcNow;
+            public List<PaletteMetadataEntry> Files { get; set; } = new List<PaletteMetadataEntry>();
+        }
+
+        [Serializable]
+        public sealed class PaletteMetadataEntry
+        {
+            public string FileName { get; set; }
+            public long FileSize { get; set; }
+            public int Section1MainPaletteOffset { get; set; }
+            public int Section2MainPaletteOffset { get; set; }
+            public List<int> Section1PaletteOffsets { get; set; } = new List<int>();
+            public List<int> Section2PaletteOffsets { get; set; } = new List<int>();
+            public List<SharedPaletteColorEntry> SharedColors { get; set; } = new List<SharedPaletteColorEntry>();
+        }
+
+        [Serializable]
+        public sealed class SharedPaletteColorEntry
+        {
+            public string RgbHex { get; set; }
+            public List<int> Section1Indexes { get; set; } = new List<int>();
+            public List<int> Section2Indexes { get; set; } = new List<int>();
+        }
 
         public Form1()
         {
@@ -202,9 +239,15 @@ namespace FFVI_tileTool
             bool preview050505Enabled = LoadPreview050505State();
             previewTreat050505AsTransparentToolStripMenuItem.Checked = preview050505Enabled;
 
-            bool parallelPaletteUpdateEnabled = LoadParallelPaletteUpdateState();
-            if (parallelPalleteUpdateToolStripMenuItem != null)
-                parallelPalleteUpdateToolStripMenuItem.Checked = parallelPaletteUpdateEnabled;
+            bool showSharedPaletteInfo = LoadSharedPaletteInfoVisibilityState();
+            if (showSharedPaletteInfoToolStripMenuItem != null)
+                showSharedPaletteInfoToolStripMenuItem.Checked = showSharedPaletteInfo;
+            UpdateSharedPaletteVisibilityUi();
+
+            bool debugModeEnabled = LoadDebugModeState();
+            if (debugModeToolStripMenuItem != null)
+                debugModeToolStripMenuItem.Checked = debugModeEnabled;
+            UpdateDebugModeUi();
 
             recentDirectories = LoadRecentDirectories();
             RefreshRecentDirectoriesMenu();
@@ -329,12 +372,26 @@ namespace FFVI_tileTool
             }
         }
 
-        private void parallelPalleteUpdateToolStripMenuItem_CheckedChanged(object sender, EventArgs e)
+        private void showSharedPaletteInfoToolStripMenuItem_CheckedChanged(object sender, EventArgs e)
         {
-            if (parallelPalleteUpdateToolStripMenuItem == null)
+            bool visible = showSharedPaletteInfoToolStripMenuItem == null || showSharedPaletteInfoToolStripMenuItem.Checked;
+            SaveSharedPaletteInfoVisibilityState(visible);
+            UpdateSharedPaletteVisibilityUi();
+        }
+
+        private void debugModeToolStripMenuItem_CheckedChanged(object sender, EventArgs e)
+        {
+            bool enabled = debugModeToolStripMenuItem != null && debugModeToolStripMenuItem.Checked;
+            SaveDebugModeState(enabled);
+            UpdateDebugModeUi();
+        }
+
+        private void footerBuildPaletteCodexStatusLabel_Click(object sender, EventArgs e)
+        {
+            if (debugModeToolStripMenuItem == null || !debugModeToolStripMenuItem.Checked)
                 return;
 
-            SaveParallelPaletteUpdateState(parallelPalleteUpdateToolStripMenuItem.Checked);
+            rebuildPaletteMetadataCacheToolStripMenuItem_Click(sender, e);
         }
 
         private void recentDirectoryToolStripMenuItem_Click(object sender, EventArgs e)
@@ -751,6 +808,9 @@ namespace FFVI_tileTool
                 return;
             }
 
+            // In codex mode we treat this file as a reference baseline and never mutate it automatically.
+            LoadPaletteMetadataCacheForFolder(folderPath);
+
             ApplyMapCategoryFilter(fileToSelect);
 
             MaybeShowFirstRunBackupWarning(folderPath);
@@ -1025,14 +1085,342 @@ namespace FFVI_tileTool
             return Path.Combine(Application.UserAppDataPath, Preview050505SettingName);
         }
 
-        private string GetParallelPaletteUpdateStateFilePath()
+        private string GetSharedPaletteInfoVisibilityStateFilePath()
         {
-            return Path.Combine(Application.UserAppDataPath, ParallelPaletteUpdateSettingName);
+            return Path.Combine(Application.UserAppDataPath, SharedPaletteInfoVisibilitySettingName);
+        }
+
+        private string GetDebugModeStateFilePath()
+        {
+            return Path.Combine(Application.UserAppDataPath, DebugModeSettingName);
         }
 
         private string GetBackupReminderStateFilePath()
         {
             return Path.Combine(Application.UserAppDataPath, BackupReminderStateName);
+        }
+
+        private static string GetApplicationPaletteCodexPath()
+        {
+            return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, PaletteMetadataCacheFileName);
+        }
+
+        private static string GetFolderPaletteCodexPath(string folderPath)
+        {
+            if (string.IsNullOrWhiteSpace(folderPath))
+                return null;
+
+            return Path.Combine(folderPath, PaletteMetadataCacheFileName);
+        }
+
+        private static string ResolvePaletteCodexPath(string folderPath)
+        {
+            string applicationCodexPath = GetApplicationPaletteCodexPath();
+            if (File.Exists(applicationCodexPath))
+                return applicationCodexPath;
+
+            string folderCodexPath = GetFolderPaletteCodexPath(folderPath);
+            if (!string.IsNullOrWhiteSpace(folderCodexPath) && File.Exists(folderCodexPath))
+                return folderCodexPath;
+
+            // Default write target is beside the executable for redistribution.
+            return applicationCodexPath;
+        }
+
+        private static PaletteMetadataCache LoadPaletteMetadataCacheFile(string cachePath)
+        {
+            if (string.IsNullOrWhiteSpace(cachePath) || !File.Exists(cachePath))
+                return new PaletteMetadataCache();
+
+            try
+            {
+                XmlSerializer serializer = new XmlSerializer(typeof(PaletteMetadataCache));
+                using (FileStream stream = new FileStream(cachePath, FileMode.Open, FileAccess.Read, FileShare.Read))
+                {
+                    PaletteMetadataCache cache = serializer.Deserialize(stream) as PaletteMetadataCache;
+                    if (cache == null)
+                        return new PaletteMetadataCache();
+
+                    if (cache.Files == null)
+                        cache.Files = new List<PaletteMetadataEntry>();
+
+                    if (string.IsNullOrWhiteSpace(cache.SchemaVersion))
+                        cache.SchemaVersion = PaletteMetadataSchemaVersion;
+
+                    return cache;
+                }
+            }
+            catch
+            {
+                return new PaletteMetadataCache();
+            }
+        }
+
+        private void SavePaletteMetadataCacheFile(string folderPath)
+        {
+            if (!paletteMetadataDirty || paletteMetadataCache == null)
+                return;
+
+            try
+            {
+                paletteMetadataCache.SchemaVersion = PaletteMetadataSchemaVersion;
+                paletteMetadataCache.GeneratedUtc = DateTime.UtcNow;
+                paletteMetadataCache.Files = paletteMetadataByFileName.Values
+                    .OrderBy(x => x.FileName, StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+
+                string cachePath = !string.IsNullOrWhiteSpace(loadedPaletteMetadataPath)
+                    ? loadedPaletteMetadataPath
+                    : ResolvePaletteCodexPath(folderPath);
+
+                string codexDirectory = Path.GetDirectoryName(cachePath);
+                if (!string.IsNullOrWhiteSpace(codexDirectory))
+                    Directory.CreateDirectory(codexDirectory);
+
+                XmlSerializer serializer = new XmlSerializer(typeof(PaletteMetadataCache));
+                using (FileStream stream = new FileStream(cachePath, FileMode.Create, FileAccess.Write, FileShare.None))
+                {
+                    serializer.Serialize(stream, paletteMetadataCache);
+                }
+
+                paletteMetadataDirty = false;
+            }
+            catch
+            {
+                // Non-fatal: cache is an optimization and must not block app behavior.
+            }
+        }
+
+        private void LoadPaletteMetadataCacheForFolder(string folderPath)
+        {
+            string resolvedCodexPath = ResolvePaletteCodexPath(folderPath);
+            if (string.Equals(loadedPaletteMetadataFolder, folderPath, StringComparison.OrdinalIgnoreCase)
+                && string.Equals(loadedPaletteMetadataPath, resolvedCodexPath, StringComparison.OrdinalIgnoreCase))
+                return;
+
+            loadedPaletteMetadataFolder = folderPath;
+            loadedPaletteMetadataPath = resolvedCodexPath;
+            paletteMetadataCache = LoadPaletteMetadataCacheFile(resolvedCodexPath);
+            paletteMetadataByFileName = new Dictionary<string, PaletteMetadataEntry>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (PaletteMetadataEntry entry in paletteMetadataCache.Files)
+            {
+                if (entry == null || string.IsNullOrWhiteSpace(entry.FileName))
+                    continue;
+
+                if (entry.Section1PaletteOffsets == null)
+                    entry.Section1PaletteOffsets = new List<int>();
+
+                if (entry.Section2PaletteOffsets == null)
+                    entry.Section2PaletteOffsets = new List<int>();
+
+                if (entry.SharedColors == null)
+                    entry.SharedColors = new List<SharedPaletteColorEntry>();
+
+                paletteMetadataByFileName[entry.FileName] = entry;
+            }
+
+            paletteMetadataDirty = false;
+        }
+
+        private static List<SharedPaletteColorEntry> BuildSharedPaletteColorEntries(byte[] section1Palette, byte[] section2Palette)
+        {
+            List<SharedPaletteColorEntry> entries = new List<SharedPaletteColorEntry>();
+            Dictionary<string, List<int>> section1ByColor = BuildPaletteIndexMapByRgb(section1Palette);
+            Dictionary<string, List<int>> section2ByColor = BuildPaletteIndexMapByRgb(section2Palette);
+
+            foreach (string color in section1ByColor.Keys.OrderBy(k => k, StringComparer.Ordinal))
+            {
+                if (!section2ByColor.TryGetValue(color, out List<int> section2Indexes))
+                    continue;
+
+                entries.Add(new SharedPaletteColorEntry
+                {
+                    RgbHex = color,
+                    Section1Indexes = new List<int>(section1ByColor[color]),
+                    Section2Indexes = new List<int>(section2Indexes)
+                });
+            }
+
+            return entries;
+        }
+
+        private static PaletteMetadataEntry BuildPaletteMetadataEntry(string filePath, byte[] fileBuffer = null)
+        {
+            if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
+                return null;
+
+            byte[] buffer = fileBuffer ?? File.ReadAllBytes(filePath);
+            FileInfo fileInfo = new FileInfo(filePath);
+
+            PaletteMetadataEntry entry = new PaletteMetadataEntry
+            {
+                FileName = Path.GetFileName(filePath),
+                FileSize = fileInfo.Length,
+                Section1MainPaletteOffset = 0,
+                Section2MainPaletteOffset = GetSection2PaletteOffset(buffer.Length),
+                Section1PaletteOffsets = new List<int>(),
+                Section2PaletteOffsets = new List<int>(),
+                SharedColors = new List<SharedPaletteColorEntry>()
+            };
+
+            if (buffer.Length < 1024)
+                return entry;
+
+            byte[] section1Palette = ReadPaletteBlock(buffer, 0);
+            int section2PaletteOffset = entry.Section2MainPaletteOffset;
+            int section1SearchEnd = section2PaletteOffset >= 0 ? section2PaletteOffset : buffer.Length;
+            entry.Section1PaletteOffsets = FindPaletteOffsetsInRange(buffer, section1Palette, 0, section1SearchEnd);
+
+            if (entry.Section1PaletteOffsets.Count == 0)
+                entry.Section1PaletteOffsets.Add(0);
+
+            if (section2PaletteOffset >= 0)
+            {
+                byte[] section2Palette = ReadPaletteBlock(buffer, section2PaletteOffset);
+                entry.Section2PaletteOffsets = FindPaletteOffsetsInRange(buffer, section2Palette, section2PaletteOffset, buffer.Length);
+                if (entry.Section2PaletteOffsets.Count == 0)
+                    entry.Section2PaletteOffsets.Add(section2PaletteOffset);
+
+                entry.SharedColors = BuildSharedPaletteColorEntries(section1Palette, section2Palette);
+            }
+
+            return entry;
+        }
+
+        private void UpsertPaletteMetadataEntry(PaletteMetadataEntry entry)
+        {
+            if (entry == null || string.IsNullOrWhiteSpace(entry.FileName))
+                return;
+
+            paletteMetadataByFileName[entry.FileName] = entry;
+            paletteMetadataDirty = true;
+        }
+
+        private void EnsurePaletteMetadataCacheForFolder(string folderPath, IEnumerable<string> mapFiles)
+        {
+            if (string.IsNullOrWhiteSpace(folderPath) || !Directory.Exists(folderPath))
+                return;
+
+            LoadPaletteMetadataCacheForFolder(folderPath);
+
+            HashSet<string> knownFileNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (string mapFile in mapFiles ?? Enumerable.Empty<string>())
+            {
+                string fileName = Path.GetFileName(mapFile);
+                if (string.IsNullOrWhiteSpace(fileName))
+                    continue;
+
+                knownFileNames.Add(fileName);
+
+                if (paletteMetadataByFileName.TryGetValue(fileName, out PaletteMetadataEntry existingEntry)
+                    && existingEntry != null)
+                {
+                    continue;
+                }
+
+                PaletteMetadataEntry rebuiltEntry = BuildPaletteMetadataEntry(mapFile);
+                if (rebuiltEntry != null)
+                    UpsertPaletteMetadataEntry(rebuiltEntry);
+            }
+
+            List<string> staleEntries = paletteMetadataByFileName.Keys
+                .Where(fileName => !knownFileNames.Contains(fileName))
+                .ToList();
+
+            foreach (string staleFileName in staleEntries)
+            {
+                paletteMetadataByFileName.Remove(staleFileName);
+                paletteMetadataDirty = true;
+            }
+
+            SavePaletteMetadataCacheFile(folderPath);
+        }
+
+        private void ForceRebuildPaletteMetadataCacheForFolder(
+            string folderPath,
+            IEnumerable<string> mapFiles,
+            out int rebuiltCount,
+            out int failedCount,
+            out bool cancelled,
+            Func<bool> isCancellationRequested = null,
+            Action<int, int, string> onProgress = null)
+        {
+            rebuiltCount = 0;
+            failedCount = 0;
+            cancelled = false;
+
+            if (string.IsNullOrWhiteSpace(folderPath) || !Directory.Exists(folderPath))
+                return;
+
+            LoadPaletteMetadataCacheForFolder(folderPath);
+
+            string[] filesToProcess = (mapFiles ?? Enumerable.Empty<string>()).ToArray();
+            int totalFiles = filesToProcess.Length;
+            HashSet<string> knownFileNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            for (int i = 0; i < filesToProcess.Length; i++)
+            {
+                if (isCancellationRequested != null && isCancellationRequested())
+                {
+                    cancelled = true;
+                    break;
+                }
+
+                string mapFile = filesToProcess[i];
+                string fileName = Path.GetFileName(mapFile);
+                if (string.IsNullOrWhiteSpace(fileName))
+                    continue;
+
+                onProgress?.Invoke(i + 1, totalFiles, fileName);
+                knownFileNames.Add(fileName);
+                try
+                {
+                    PaletteMetadataEntry rebuiltEntry = BuildPaletteMetadataEntry(mapFile);
+                    if (rebuiltEntry != null)
+                    {
+                        UpsertPaletteMetadataEntry(rebuiltEntry);
+                        rebuiltCount++;
+                    }
+                }
+                catch
+                {
+                    failedCount++;
+                }
+            }
+
+            List<string> staleEntries = paletteMetadataByFileName.Keys
+                .Where(fileName => !knownFileNames.Contains(fileName))
+                .ToList();
+
+            foreach (string staleFileName in staleEntries)
+            {
+                paletteMetadataByFileName.Remove(staleFileName);
+                paletteMetadataDirty = true;
+            }
+
+            SavePaletteMetadataCacheFile(folderPath);
+        }
+
+        private bool TryGetPaletteMetadataForFile(string filePath, byte[] fileBuffer, out PaletteMetadataEntry entry)
+        {
+            entry = null;
+            if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
+                return false;
+
+            string folderPath = Path.GetDirectoryName(filePath);
+            if (string.IsNullOrWhiteSpace(folderPath) || !Directory.Exists(folderPath))
+                return false;
+
+            LoadPaletteMetadataCacheForFolder(folderPath);
+
+            string fileName = Path.GetFileName(filePath);
+            if (paletteMetadataByFileName.TryGetValue(fileName, out PaletteMetadataEntry cachedEntry))
+            {
+                entry = cachedEntry;
+                return true;
+            }
+
+            return false;
         }
 
         private List<string> LoadRecentDirectories()
@@ -1354,12 +1742,12 @@ namespace FFVI_tileTool
             }
         }
 
-        private void SaveParallelPaletteUpdateState(bool enabled)
+        private void SaveSharedPaletteInfoVisibilityState(bool visible)
         {
             try
             {
                 Directory.CreateDirectory(Application.UserAppDataPath);
-                File.WriteAllText(GetParallelPaletteUpdateStateFilePath(), enabled ? "1" : "0");
+                File.WriteAllText(GetSharedPaletteInfoVisibilityStateFilePath(), visible ? "1" : "0");
             }
             catch
             {
@@ -1367,11 +1755,11 @@ namespace FFVI_tileTool
             }
         }
 
-        private bool LoadParallelPaletteUpdateState()
+        private bool LoadSharedPaletteInfoVisibilityState()
         {
             try
             {
-                string stateFilePath = GetParallelPaletteUpdateStateFilePath();
+                string stateFilePath = GetSharedPaletteInfoVisibilityStateFilePath();
                 if (!File.Exists(stateFilePath)) return false;
 
                 string value = File.ReadAllText(stateFilePath).Trim();
@@ -1382,6 +1770,54 @@ namespace FFVI_tileTool
                 return false;
             }
         }
+
+        private void UpdateSharedPaletteVisibilityUi()
+        {
+            bool visible = showSharedPaletteInfoToolStripMenuItem == null || showSharedPaletteInfoToolStripMenuItem.Checked;
+            if (groupBoxSharedPaletteInfo != null)
+                groupBoxSharedPaletteInfo.Visible = visible;
+        }
+
+        private void SaveDebugModeState(bool enabled)
+        {
+            try
+            {
+                Directory.CreateDirectory(Application.UserAppDataPath);
+                File.WriteAllText(GetDebugModeStateFilePath(), enabled ? "1" : "0");
+            }
+            catch
+            {
+                // Non-fatal: app should still work if state can't be persisted.
+            }
+        }
+
+        private bool LoadDebugModeState()
+        {
+            try
+            {
+                string stateFilePath = GetDebugModeStateFilePath();
+                if (!File.Exists(stateFilePath)) return false;
+
+                string value = File.ReadAllText(stateFilePath).Trim();
+                return value == "1" || value.Equals("true", StringComparison.OrdinalIgnoreCase);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private void UpdateDebugModeUi()
+        {
+            bool debugEnabled = debugModeToolStripMenuItem != null && debugModeToolStripMenuItem.Checked;
+
+            if (footerBuildPaletteCodexStatusLabel != null)
+                footerBuildPaletteCodexStatusLabel.Visible = debugEnabled;
+
+            if (rebuildPaletteMetadataCacheToolStripMenuItem != null)
+                rebuildPaletteMetadataCacheToolStripMenuItem.Visible = false;
+        }
+
         private void ApplyTheme(bool darkMode)
         {
             GetThemeColors(darkMode, out System.Drawing.Color background, out System.Drawing.Color surface, out System.Drawing.Color foreground);
@@ -2271,6 +2707,13 @@ namespace FFVI_tileTool
             {
                 item.BackColor = surface;
                 item.ForeColor = foreground;
+
+                if (item == footerBuildPaletteCodexStatusLabel && item is ToolStripStatusLabel linkLabel)
+                {
+                    linkLabel.LinkColor = foreground;
+                    linkLabel.ActiveLinkColor = foreground;
+                    linkLabel.VisitedLinkColor = foreground;
+                }
             }
         }
 
@@ -2812,12 +3255,27 @@ namespace FFVI_tileTool
                 byte[] originalPalette = ReadPaletteBlock(fileBuffer, 0);
                 int section2PaletteOffset = GetSection2PaletteOffset(fileBuffer.Length);
                 int section1SearchEnd = section2PaletteOffset >= 0 ? section2PaletteOffset : fileBuffer.Length;
-                List<int> section1PaletteOffsets = FindPaletteOffsetsInRange(fileBuffer, originalPalette, 0, section1SearchEnd);
+                List<int> section1PaletteOffsets = null;
+                List<SharedPaletteColorEntry> sharedEntries = null;
+                if (TryGetPaletteMetadataForFile(filePath, fileBuffer, out PaletteMetadataEntry metadataEntry))
+                {
+                    section1PaletteOffsets = metadataEntry.Section1PaletteOffsets != null
+                        ? metadataEntry.Section1PaletteOffsets.Where(x => x >= 0 && x + 1024 <= section1SearchEnd).Distinct().ToList()
+                        : null;
+                    sharedEntries = metadataEntry.SharedColors;
+                }
+
+                if (section1PaletteOffsets == null || section1PaletteOffsets.Count == 0)
+                    section1PaletteOffsets = FindPaletteOffsetsInRange(fileBuffer, originalPalette, 0, section1SearchEnd);
 
                 if (applyParallelPaletteUpdate && section2PaletteOffset >= 0)
                 {
                     byte[] section2Palette = ReadPaletteBlock(fileBuffer, section2PaletteOffset);
-                    ApplyParallelPaletteUpdate(originalPalette, palBuffer, section2Palette);
+                    if (sharedEntries != null && sharedEntries.Count > 0)
+                        ApplyParallelPaletteUpdateFromSharedEntries(palBuffer, section2Palette, sharedEntries, true);
+                    else
+                        ApplyParallelPaletteUpdate(originalPalette, palBuffer, section2Palette);
+
                     Buffer.BlockCopy(section2Palette, 0, fileBuffer, section2PaletteOffset, 1024);
                 }
 
@@ -2866,11 +3324,28 @@ namespace FFVI_tileTool
 
                     // Build updated Section 1 palette by syncing shared colors from Section 2.
                     byte[] updatedSection1Palette = (byte[])originalSection1Palette.Clone();
-                    ApplyParallelPaletteUpdate(originalSection2Palette, palBuffer, updatedSection1Palette);
+                    List<SharedPaletteColorEntry> sharedEntries = null;
+                    List<int> section1PaletteOffsets = null;
+                    if (TryGetPaletteMetadataForFile(filePath, fileBuffer, out PaletteMetadataEntry metadataEntry))
+                    {
+                        sharedEntries = metadataEntry.SharedColors;
+                        section1PaletteOffsets = metadataEntry.Section1PaletteOffsets != null
+                            ? metadataEntry.Section1PaletteOffsets.Where(x => x >= 0 && x + 1024 <= section2PaletteOffset).Distinct().ToList()
+                            : null;
+                    }
+
+                    if (sharedEntries != null && sharedEntries.Count > 0)
+                        ApplyParallelPaletteUpdateFromSharedEntries(palBuffer, updatedSection1Palette, sharedEntries, false);
+                    else
+                        ApplyParallelPaletteUpdate(originalSection2Palette, palBuffer, updatedSection1Palette);
 
                     // Find every mirror copy of Section 1's palette in the file and update them all.
-                    int section1SearchEnd = section2PaletteOffset;
-                    List<int> section1PaletteOffsets = FindPaletteOffsetsInRange(fileBuffer, originalSection1Palette, 0, section1SearchEnd);
+                    if (section1PaletteOffsets == null || section1PaletteOffsets.Count == 0)
+                    {
+                        int section1SearchEnd = section2PaletteOffset;
+                        section1PaletteOffsets = FindPaletteOffsetsInRange(fileBuffer, originalSection1Palette, 0, section1SearchEnd);
+                    }
+
                     ApplyPaletteAtOffsets(fileBuffer, section1PaletteOffsets, updatedSection1Palette);
                 }
 
@@ -3021,6 +3496,45 @@ namespace FFVI_tileTool
             }
         }
 
+        private static void ApplyParallelPaletteUpdateFromSharedEntries(byte[] updatedSourcePalette, byte[] targetPalette, IEnumerable<SharedPaletteColorEntry> sharedEntries, bool sourceIsSection1)
+        {
+            if (updatedSourcePalette == null || targetPalette == null || sharedEntries == null)
+                return;
+
+            if (updatedSourcePalette.Length < 1024 || targetPalette.Length < 1024)
+                return;
+
+            foreach (SharedPaletteColorEntry entry in sharedEntries)
+            {
+                if (entry == null)
+                    continue;
+
+                List<int> sourceIndexes = sourceIsSection1 ? entry.Section1Indexes : entry.Section2Indexes;
+                List<int> targetIndexes = sourceIsSection1 ? entry.Section2Indexes : entry.Section1Indexes;
+                if (sourceIndexes == null || targetIndexes == null || sourceIndexes.Count == 0 || targetIndexes.Count == 0)
+                    continue;
+
+                foreach (int sourceIndex in sourceIndexes)
+                {
+                    if (sourceIndex < 0 || sourceIndex >= 256)
+                        continue;
+
+                    int sourceOffset = sourceIndex * 4;
+                    foreach (int targetIndex in targetIndexes)
+                    {
+                        if (targetIndex < 0 || targetIndex >= 256)
+                            continue;
+
+                        int targetOffset = targetIndex * 4;
+                        targetPalette[targetOffset + 0] = updatedSourcePalette[sourceOffset + 0];
+                        targetPalette[targetOffset + 1] = updatedSourcePalette[sourceOffset + 1];
+                        targetPalette[targetOffset + 2] = updatedSourcePalette[sourceOffset + 2];
+                        targetPalette[targetOffset + 3] = updatedSourcePalette[sourceOffset + 3];
+                    }
+                }
+            }
+        }
+
         private static string GetPaletteRgbAtIndex(byte[] palette, int index)
         {
             int baseOffset = index * 4;
@@ -3041,6 +3555,7 @@ namespace FFVI_tileTool
                 currentSection1Palette = new byte[1024];
                 currentSection2Palette = new byte[1024];
                 currentHasSection2Palette = false;
+                currentSharedPaletteColorEntries = new List<SharedPaletteColorEntry>();
                 UpdateSharedPaletteInfoDisplay();
                 return;
             }
@@ -3055,6 +3570,7 @@ namespace FFVI_tileTool
                 currentSection1Palette = new byte[1024];
                 currentSection2Palette = new byte[1024];
                 currentHasSection2Palette = false;
+                currentSharedPaletteColorEntries = new List<SharedPaletteColorEntry>();
                 UpdateSharedPaletteInfoDisplay();
                 return;
             }
@@ -3069,7 +3585,25 @@ namespace FFVI_tileTool
 
             int Section1SearchEnd = Section2PaletteOffset >= 0 ? Section2PaletteOffset : fileBuffer.Length;
             currentSection1PaletteOffsets = FindPaletteOffsetsInRange(fileBuffer, Section1Palette, 0, Section1SearchEnd);
-            currentSection2PaletteOffsets = Section2PaletteOffset >= 0 ? new List<int> { Section2PaletteOffset } : new List<int>();
+            currentSection2PaletteOffsets = Section2PaletteOffset >= 0
+                ? FindPaletteOffsetsInRange(fileBuffer, Section2Palette, Section2PaletteOffset, fileBuffer.Length)
+                : new List<int>();
+            currentSharedPaletteColorEntries = BuildSharedPaletteColorEntries(Section1Palette, Section2Palette);
+
+            if (TryGetPaletteMetadataForFile(filePath, fileBuffer, out PaletteMetadataEntry metadataEntry))
+            {
+                if (metadataEntry.Section1PaletteOffsets != null && metadataEntry.Section1PaletteOffsets.Count > 0)
+                    currentSection1PaletteOffsets = metadataEntry.Section1PaletteOffsets.Where(x => x >= 0 && x + 1024 <= Section1SearchEnd).Distinct().ToList();
+
+                if (Section2PaletteOffset >= 0 && metadataEntry.Section2PaletteOffsets != null && metadataEntry.Section2PaletteOffsets.Count > 0)
+                    currentSection2PaletteOffsets = metadataEntry.Section2PaletteOffsets.Where(x => x >= Section2PaletteOffset && x + 1024 <= fileBuffer.Length).Distinct().ToList();
+
+                if (metadataEntry.SharedColors != null && metadataEntry.SharedColors.Count > 0)
+                    currentSharedPaletteColorEntries = metadataEntry.SharedColors;
+            }
+
+            if (Section2PaletteOffset >= 0 && currentSection2PaletteOffsets.Count == 0)
+                currentSection2PaletteOffsets = new List<int> { Section2PaletteOffset };
 
             buttonSection1PaletteInfo.Text = $"Image Info ({currentSection1PaletteOffsets.Count})";
             buttonSection2PaletteInfo.Text = Section2PaletteOffset >= 0
@@ -3098,18 +3632,20 @@ namespace FFVI_tileTool
                 return;
             }
 
-            Dictionary<string, List<int>> section1ByColor = BuildPaletteIndexMapByRgb(currentSection1Palette);
-            Dictionary<string, List<int>> section2ByColor = BuildPaletteIndexMapByRgb(currentSection2Palette);
+            List<SharedPaletteColorEntry> sharedEntries = currentSharedPaletteColorEntries ?? new List<SharedPaletteColorEntry>();
 
             int sharedCount = 0;
-            foreach (string color in section1ByColor.Keys.OrderBy(k => k, StringComparer.Ordinal))
+            foreach (SharedPaletteColorEntry entry in sharedEntries
+                .Where(x => x != null && !string.IsNullOrWhiteSpace(x.RgbHex))
+                .OrderBy(x => x.RgbHex, StringComparer.Ordinal))
             {
-                if (!section2ByColor.TryGetValue(color, out List<int> section2Indexes))
+                List<int> section1Indexes = entry.Section1Indexes ?? new List<int>();
+                List<int> section2Indexes = entry.Section2Indexes ?? new List<int>();
+                if (section1Indexes.Count == 0 || section2Indexes.Count == 0)
                     continue;
 
-                List<int> section1Indexes = section1ByColor[color];
-                int rowIndex = dataGridViewSharedPaletteInfo.Rows.Add(string.Empty, color, string.Join(",", section1Indexes), string.Join(",", section2Indexes));
-                if (TryParseRgbHexColor(color, out Color previewColor))
+                int rowIndex = dataGridViewSharedPaletteInfo.Rows.Add(string.Empty, entry.RgbHex, string.Join(",", section1Indexes), string.Join(",", section2Indexes));
+                if (TryParseRgbHexColor(entry.RgbHex, out Color previewColor))
                 {
                     DataGridViewCell previewCell = dataGridViewSharedPaletteInfo.Rows[rowIndex].Cells[0];
                     previewCell.Style.BackColor = previewColor;
@@ -3633,6 +4169,109 @@ namespace FFVI_tileTool
             ShowAppMessage(
                 $"Backup finished.\n\nBacked up: {backedUpCount}\nSkipped existing: {skippedCount}\nFailed: {failedCount}\nOutput folder: {outputFolder}",
                 "Map backup",
+                failedCount == 0 ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
+        }
+
+        private void rebuildPaletteMetadataCacheToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            string folderPath = GetCurrentMapFolder();
+            if (string.IsNullOrWhiteSpace(folderPath) || !Directory.Exists(folderPath))
+            {
+                ShowAppMessage("No working map folder is loaded yet. Please use Browse first.", "Palette Codex", MessageBoxIcon.Warning);
+                return;
+            }
+
+            string[] mapFiles = GetSupportedBinFiles(folderPath);
+            if (mapFiles.Length == 0)
+            {
+                ShowAppMessage("No compatible .bin files found in the current folder.", "Palette Codex", MessageBoxIcon.Warning);
+                return;
+            }
+
+            int rebuiltCount = 0;
+            int failedCount = 0;
+            bool cancelled = false;
+
+            using (Form progressForm = new Form())
+            using (Label statusLabel = new Label())
+            using (ProgressBar progressBar = new ProgressBar())
+            using (Button cancelButton = new Button())
+            {
+                progressForm.Text = "Building/Refreshing Palette Codex";
+                progressForm.FormBorderStyle = FormBorderStyle.FixedDialog;
+                progressForm.StartPosition = FormStartPosition.CenterParent;
+                progressForm.MinimizeBox = false;
+                progressForm.MaximizeBox = false;
+                progressForm.ControlBox = false;
+                progressForm.ClientSize = new Size(560, 120);
+
+                statusLabel.AutoSize = false;
+                statusLabel.TextAlign = ContentAlignment.MiddleLeft;
+                statusLabel.Dock = DockStyle.Top;
+                statusLabel.Height = 56;
+                statusLabel.Text = "Preparing rebuild...";
+
+                progressBar.Dock = DockStyle.Bottom;
+                progressBar.Height = 24;
+                progressBar.Minimum = 0;
+                progressBar.Maximum = Math.Max(1, mapFiles.Length);
+                progressBar.Value = 0;
+
+                bool cancelRequested = false;
+                cancelButton.Text = "Cancel";
+                cancelButton.Size = new Size(90, 26);
+                cancelButton.Location = new Point(progressForm.ClientSize.Width - cancelButton.Width - 12, 62);
+                cancelButton.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+                cancelButton.Click += (s, evt) =>
+                {
+                    cancelRequested = true;
+                    cancelButton.Enabled = false;
+                    statusLabel.Text = "Cancelling after current file...";
+                };
+
+                progressForm.Controls.Add(statusLabel);
+                progressForm.Controls.Add(cancelButton);
+                progressForm.Controls.Add(progressBar);
+
+                GetThemeColors(darkModeToolStripMenuItem.Checked, out System.Drawing.Color background, out System.Drawing.Color surface, out System.Drawing.Color foreground);
+                ApplyThemeToControlTree(progressForm, background, surface, foreground, darkModeToolStripMenuItem.Checked);
+                ApplyTitleBarThemeToForm(progressForm, darkModeToolStripMenuItem.Checked);
+                progressForm.Show(this);
+                progressForm.Refresh();
+
+                ForceRebuildPaletteMetadataCacheForFolder(
+                    folderPath,
+                    mapFiles,
+                    out rebuiltCount,
+                    out failedCount,
+                    out cancelled,
+                    () => cancelRequested,
+                    (current, total, fileName) =>
+                    {
+                        if (!progressForm.IsHandleCreated)
+                            return;
+
+                        progressBar.Maximum = Math.Max(1, total);
+                        progressBar.Value = Math.Max(progressBar.Minimum, Math.Min(progressBar.Maximum, current));
+                        statusLabel.Text = $"Rebuilding {current}/{total}: {fileName}";
+                        progressForm.Refresh();
+                        Application.DoEvents();
+                    });
+
+                progressForm.Close();
+            }
+
+            string selectedMap = GetSelectedMapFilePath();
+            if (!string.IsNullOrWhiteSpace(selectedMap) && File.Exists(selectedMap))
+                UpdatePaletteInfo(selectedMap);
+
+            string activeCodexPath = !string.IsNullOrWhiteSpace(loadedPaletteMetadataPath)
+                ? loadedPaletteMetadataPath
+                : ResolvePaletteCodexPath(folderPath);
+
+            ShowAppMessage(
+                $"Palette Codex build {(cancelled ? "cancelled" : "completed")}.\n\nProcessed files: {rebuiltCount}\nFailed files: {failedCount}\nCodex file: {activeCodexPath}",
+                "Palette Codex",
                 failedCount == 0 ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
         }
 

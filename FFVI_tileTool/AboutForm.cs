@@ -344,9 +344,10 @@ namespace FFVI_tileTool
                     else if (control is LinkLabel linkLabel)
                     {
                         linkLabel.BackColor = Color.Transparent;
-                        linkLabel.ForeColor = Color.Cyan;
-                        linkLabel.LinkColor = Color.Cyan;
-                        linkLabel.VisitedLinkColor = Color.FromArgb(0, 200, 200);
+                        linkLabel.ForeColor = Color.White;
+                        linkLabel.LinkColor = Color.White;
+                        linkLabel.ActiveLinkColor = Color.White;
+                        linkLabel.VisitedLinkColor = Color.White;
                     }
                     else if (control is Panel panel)
                     {
